@@ -13,15 +13,23 @@ final class UsageStore: ObservableObject {
         ProviderDisplay(provider: $0)
     }
     @Published private(set) var isRefreshing = false
-    @Published var wanders = UserDefaults.standard.object(forKey: "wanders") as? Bool ?? true {
-        didSet { UserDefaults.standard.set(wanders, forKey: "wanders") }
+    @Published var wanders: Bool {
+        didSet { preferences.set(wanders, forKey: "wanders") }
+    }
+    @Published var selectedCharacter: PetCharacter {
+        didSet { preferences.set(selectedCharacter.rawValue, forKey: "petCharacter") }
     }
     let previewPercent: Double?
     private let usageFetching: any UsageFetching
+    private let preferences: UserDefaults
 
-    init(usageFetching: any UsageFetching, previewPercent: Double? = nil) {
+    init(usageFetching: any UsageFetching, previewPercent: Double? = nil, preferences: UserDefaults = .standard) {
         self.usageFetching = usageFetching
         self.previewPercent = previewPercent
+        self.preferences = preferences
+        wanders = preferences.object(forKey: "wanders") as? Bool ?? true
+        let savedCharacter = preferences.string(forKey: "petCharacter") ?? ""
+        selectedCharacter = PetCharacter(rawValue: savedCharacter) ?? .chiikawa
         if let previewPercent {
             for index in providers.indices {
                 let window = try! QuotaWindow(title: "5시간", usedPercent: 100 - previewPercent, resetsAt: nil)

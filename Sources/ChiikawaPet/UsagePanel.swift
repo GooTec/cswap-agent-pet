@@ -5,22 +5,46 @@ private let petInk = Color(red: 0.24, green: 0.22, blue: 0.29)
 private let petPaper = Color(red: 1, green: 0.98, blue: 0.95)
 
 struct UsagePanel: View {
+    static let width: CGFloat = 360
     @ObservedObject var store: UsageStore
 
     var body: some View {
+        ScrollView(.vertical) {
+            content
+        }
+        .frame(width: Self.width)
+        .background(petPaper)
+        .clipShape(RoundedRectangle(cornerRadius: 22))
+        .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(petInk.opacity(0.08)))
+        .environment(\.colorScheme, .light)
+    }
+
+    var content: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("CHIIKAWA PET")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .tracking(2).foregroundStyle(.secondary)
-                    Text("치이카와의 에너지")
+                    Text("\(store.selectedCharacter.name)의 에너지")
                         .font(.system(size: 23, weight: .bold, design: .rounded))
                     Text(store.mood.caption).font(.system(size: 12)).foregroundStyle(.secondary)
                 }
                 Spacer()
-                SpritePreview(remainingPercent: store.remainingPercent)
-                    .frame(width: 68, height: 76).accessibilityHidden(true)
+                SpritePreview(character: store.selectedCharacter, remainingPercent: store.remainingPercent)
+                    .frame(width: 68, height: 84).accessibilityHidden(true)
+                    .allowsHitTesting(false)
+            }
+            HStack(spacing: 8) {
+                ForEach(PetCharacter.allCases) { character in
+                    CharacterCard(
+                        character: character,
+                        remainingPercent: store.remainingPercent,
+                        isSelected: store.selectedCharacter == character
+                    ) {
+                        store.selectedCharacter = character
+                    }
+                }
             }
             if store.previewPercent != nil {
                 Text("표정 미리보기 · 실제 사용량이 아닙니다")
@@ -60,11 +84,46 @@ struct UsagePanel: View {
         }
         .padding(22)
         .foregroundStyle(petInk)
-        .frame(width: 360)
-        .background(petPaper)
-        .clipShape(RoundedRectangle(cornerRadius: 22))
-        .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(petInk.opacity(0.08)))
+        .frame(width: Self.width)
+        .fixedSize(horizontal: false, vertical: true)
         .environment(\.colorScheme, .light)
+    }
+}
+
+private struct CharacterCard: View {
+    let character: PetCharacter
+    let remainingPercent: Double?
+    let isSelected: Bool
+    let select: () -> Void
+
+    var body: some View {
+        Button(action: select) {
+            VStack(spacing: 6) {
+                SpritePreview(character: character, remainingPercent: remainingPercent)
+                    .frame(width: 76, height: 84)
+                    .accessibilityHidden(true)
+                    .allowsHitTesting(false)
+                Text(character.name)
+                    .font(.system(size: 12, weight: isSelected ? .bold : .medium))
+            }
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .background(isSelected ? Color(red: 0.95, green: 0.85, blue: 0.79) : .white.opacity(0.7), in: RoundedRectangle(cornerRadius: 13))
+            .overlay(RoundedRectangle(cornerRadius: 13).strokeBorder(petInk.opacity(isSelected ? 0.6 : 0.1), lineWidth: isSelected ? 2 : 1))
+            .overlay(alignment: .topTrailing) {
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(7)
+                }
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 13))
+        }
+        .buttonStyle(.plain)
+        .accessibilityRepresentation {
+            Button("\(character.name) 선택", action: select)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+        }
     }
 }
 
@@ -139,7 +198,11 @@ private struct ProviderCard: View {
 }
 
 private struct SpritePreview: NSViewRepresentable {
+    let character: PetCharacter
     let remainingPercent: Double?
     func makeNSView(context: Context) -> PixelPetView { PixelPetView(frame: .zero) }
-    func updateNSView(_ view: PixelPetView, context: Context) { view.remainingPercent = remainingPercent }
+    func updateNSView(_ view: PixelPetView, context: Context) {
+        view.character = character
+        view.remainingPercent = remainingPercent
+    }
 }

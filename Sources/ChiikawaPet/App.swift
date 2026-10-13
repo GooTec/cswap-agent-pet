@@ -71,7 +71,7 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
             ? NSPoint(x: screen.maxX - 190, y: screen.minY + 55)
             : NSPoint(x: saved.double(forKey: "petX"), y: saved.double(forKey: "petY"))
         petWindow = NSPanel(contentRect: NSRect(origin: origin, size: NSSize(width: 148, height: 164)), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        petWindow.title = "치이카와 펫"
+        petWindow.title = "\(store.selectedCharacter.name) 펫"
         petWindow.setAccessibilityRole(.window)
         petWindow.setAccessibilitySubrole(.floatingWindow)
         petWindow.level = .floating
@@ -84,19 +84,19 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         petView = DraggablePetView(frame: NSRect(origin: .zero, size: petWindow.frame.size))
         petView.owner = self
         petView.remainingPercent = store.remainingPercent
+        petView.character = store.selectedCharacter
         petWindow.contentView = petView
         constrainPetToScreens()
         petWindow.orderFrontRegardless()
         observation = store.objectWillChange.sink { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
-                self.petView.remainingPercent = self.store.remainingPercent
-                self.statusItem.button?.toolTip = "치이카와 · \(self.store.remainingPercent.map { "\(Int($0.rounded(.down)))% 남음" } ?? "연결 필요")"
+                self.updatePetPresentation()
             }
         }
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "치이카와 펫")
-        statusItem.menu = makeMenu()
+        statusItem.button?.image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "에이전트 펫")
+        updatePetPresentation()
         animationTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.walk() }
         }
@@ -124,14 +124,25 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         constrainPetToScreens()
     }
 
+    private func updatePetPresentation() {
+        petView.remainingPercent = store.remainingPercent
+        petView.character = store.selectedCharacter
+        petWindow.title = "\(store.selectedCharacter.name) 펫"
+        usageWindow?.title = "\(store.selectedCharacter.name) 사용량"
+        statusItem.button?.toolTip = "\(store.selectedCharacter.name) · \(store.remainingPercent.map { "\(Int($0.rounded(.down)))% 남음" } ?? "연결 필요")"
+        statusItem.button?.setAccessibilityLabel("\(store.selectedCharacter.name) 펫")
+        statusItem.menu = makeMenu()
+    }
+
     @objc func toggleUsage() {
         if usageWindow?.isVisible == true { closeUsage(); return }
-        let hostingView = NSHostingView(rootView: UsagePanel(store: store))
-        let fitting = hostingView.fittingSize
+        let usagePanel = UsagePanel(store: store)
+        let contentView = NSHostingView(rootView: usagePanel.content)
         let screen = petWindow.screen?.visibleFrame ?? NSScreen.main!.visibleFrame
-        let height = min(max(fitting.height, 420), screen.height - 24)
-        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 360, height: height), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        panel.title = "치이카와 사용량"
+        let height = min(contentView.fittingSize.height, max(1, screen.height - 24))
+        let hostingView = NSHostingView(rootView: usagePanel.frame(height: height))
+        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: UsagePanel.width, height: height), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.title = "\(store.selectedCharacter.name) 사용량"
         panel.setAccessibilityRole(.window)
         panel.setAccessibilitySubrole(.floatingWindow)
         panel.backgroundColor = .clear
@@ -143,8 +154,8 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         panel.isReleasedWhenClosed = false
         panel.contentView = hostingView
         let pet = petWindow.frame
-        let preferredX = pet.midX - 180
-        let x = min(max(preferredX, screen.minX + 12), screen.maxX - 372)
+        let preferredX = pet.midX - UsagePanel.width / 2
+        let x = min(max(preferredX, screen.minX + 12), screen.maxX - UsagePanel.width - 12)
         let above = pet.maxY + 8
         let y = above + height <= screen.maxY - 12 ? above : max(screen.minY + 12, pet.minY - height - 8)
         panel.setFrameOrigin(NSPoint(x: x, y: y))
@@ -171,20 +182,34 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
 
     private func makeMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(withTitle: "치이카와 · 사용량 보기", action: #selector(toggleUsage), keyEquivalent: "")
+        menu.addItem(withTitle: "\(store.selectedCharacter.name) · 사용량 보기", action: #selector(toggleUsage), keyEquivalent: "")
         menu.addItem(withTitle: "사용량 새로고침 / 연결", action: #selector(refreshUsage), keyEquivalent: "")
+        let characters = NSMenu()
+        for character in PetCharacter.allCases {
+            let choice = characters.addItem(withTitle: character.name, action: #selector(selectCharacter), keyEquivalent: "")
+            choice.representedObject = character.rawValue
+            choice.state = character == store.selectedCharacter ? .on : .off
+            choice.target = self
+        }
+        let characterMenu = menu.addItem(withTitle: "펫 종류", action: nil, keyEquivalent: "")
+        characterMenu.submenu = characters
         menu.addItem(.separator())
         let wander = menu.addItem(withTitle: "느긋하게 산책하기", action: #selector(toggleWandering), keyEquivalent: "")
         wander.state = store.wanders ? .on : .off
         menu.addItem(withTitle: "화면 가운데로 데려오기", action: #selector(centerPet), keyEquivalent: "")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "치이카와 종료", action: #selector(quit), keyEquivalent: "q")
+        menu.addItem(withTitle: "펫 종료", action: #selector(quit), keyEquivalent: "q")
         for item in menu.items { item.target = self }
         return menu
     }
 
     @objc private func refreshUsage() { Task { await store.refresh(allowKeychainPrompt: true) } }
-    @objc private func toggleWandering() { store.wanders.toggle(); statusItem.menu = makeMenu() }
+    @objc private func toggleWandering() { store.wanders.toggle() }
+    @objc private func selectCharacter(_ sender: NSMenuItem) {
+        guard let name = sender.representedObject as? String,
+              let character = PetCharacter(rawValue: name) else { return }
+        store.selectedCharacter = character
+    }
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func centerPet() {
         let screen = NSScreen.main?.visibleFrame ?? petWindow.frame
