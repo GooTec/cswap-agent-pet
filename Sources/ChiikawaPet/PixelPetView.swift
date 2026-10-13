@@ -20,7 +20,10 @@ class PixelPetView: NSView {
     }
 
     var animationEnabled = true {
-        didSet { updateAnimationTimer() }
+        didSet {
+            guard animationEnabled != oldValue else { return }
+            updateAnimationTimer()
+        }
     }
 
     private var animationTimer: Timer?
@@ -28,6 +31,63 @@ class PixelPetView: NSView {
     private static let spriteSize = CGSize(width: 64, height: 80)
     private static let shadow = CGColor(srgbRed: 0.39, green: 0.30, blue: 0.31, alpha: 0.12)
     private static let frames: [PetCharacter: [CGImage]] = loadFrames()
+    private static let menuBarImages: [PetCharacter: [NSImage]] = loadMenuBarImages()
+
+    static func menuBarImage(character: PetCharacter, mood: PetMood) -> NSImage {
+        return menuBarImages[character]![spriteRow(for: mood)]
+    }
+
+    private static func spriteRow(for mood: PetMood) -> Int {
+        switch mood {
+        case .delighted: 0
+        case .happy: 1
+        case .uneasy: 2
+        case .sad: 3
+        case .crying: 4
+        case .unknown: 5
+        }
+    }
+
+    private static func loadMenuBarImages() -> [PetCharacter: [NSImage]] {
+        var icons: [PetCharacter: [NSImage]] = [:]
+        for character in PetCharacter.allCases {
+            let face: CGRect
+            switch character {
+            case .chiikawa: face = CGRect(x: 8, y: 16, width: 48, height: 40)
+            case .hachiware: face = CGRect(x: 8, y: 11, width: 48, height: 45)
+            case .usagi: face = CGRect(x: 8, y: 2, width: 48, height: 54)
+            }
+            var characterIcons: [NSImage] = []
+            for row in 0..<6 {
+                guard let crop = frames[character]![row * 8].cropping(to: face),
+                      let context = CGContext(
+                        data: nil, width: 40, height: 40, bitsPerComponent: 8,
+                        bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                      ) else {
+                    fatalError("Unable to render menu bar sprite: \(character.rawValue)")
+                }
+                let scale = min(40 / face.width, 40 / face.height)
+                let size = CGSize(width: face.width * scale, height: face.height * scale)
+                let rectangle = CGRect(
+                    x: ((40 - size.width) / 2).rounded(),
+                    y: ((40 - size.height) / 2).rounded(),
+                    width: size.width, height: size.height
+                )
+                context.setShouldAntialias(false)
+                context.interpolationQuality = .none
+                context.draw(crop, in: rectangle)
+                guard let rendered = context.makeImage() else {
+                    fatalError("Unable to cache menu bar sprite: \(character.rawValue)")
+                }
+                let image = NSImage(cgImage: rendered, size: NSSize(width: 20, height: 20))
+                image.isTemplate = false
+                characterIcons.append(image)
+            }
+            icons[character] = characterIcons
+        }
+        return icons
+    }
 
     private static func loadFrames() -> [PetCharacter: [CGImage]] {
         var sprites: [PetCharacter: [CGImage]] = [:]
@@ -116,8 +176,7 @@ class PixelPetView: NSView {
         let context = graphics.cgContext
         context.clear(bounds)
         let backingScale = window?.backingScaleFactor ?? 2
-        let fit = min(bounds.width / Self.spriteSize.width, bounds.height / Self.spriteSize.height)
-        let scale = floor(fit * backingScale) / backingScale
+        let scale = min(bounds.width / Self.spriteSize.width, bounds.height / Self.spriteSize.height)
         guard scale > 0 else { return }
         let originX = ((bounds.width - Self.spriteSize.width * scale) / 2 * backingScale).rounded() / backingScale
         let originY = ((bounds.height - Self.spriteSize.height * scale) / 2 * backingScale).rounded() / backingScale
@@ -132,15 +191,7 @@ class PixelPetView: NSView {
         context.fill(CGRect(x: 18, y: 78, width: 28, height: 1))
 
         let mood = PetMood.forRemaining(remainingPercent)
-        let row: Int
-        switch mood {
-        case .delighted: row = 0
-        case .happy: row = 1
-        case .uneasy: row = 2
-        case .sad: row = 3
-        case .crying: row = 4
-        case .unknown: row = 5
-        }
+        let row = Self.spriteRow(for: mood)
         let column: Int
         if mood == .crying {
             column = (animationFrame / 3) % 8

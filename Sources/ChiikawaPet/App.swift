@@ -45,7 +45,7 @@ struct ChiikawaPetApp {
 }
 
 @MainActor
-final class PetAppDelegate: NSObject, NSApplicationDelegate {
+final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let store: UsageStore
     private let showUsageOnLaunch: Bool
     private var petWindow: NSPanel!
@@ -56,6 +56,7 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
     private var refreshTimer: Timer?
     private var observation: AnyCancellable?
     private var clickMonitor: Any?
+    private var appliedPetVisibility: Bool?
     private var direction: CGFloat = -1
     private var isDragging = false
 
@@ -70,7 +71,8 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         let origin = saved.object(forKey: "petX") == nil
             ? NSPoint(x: screen.maxX - 190, y: screen.minY + 55)
             : NSPoint(x: saved.double(forKey: "petX"), y: saved.double(forKey: "petY"))
-        petWindow = NSPanel(contentRect: NSRect(origin: origin, size: NSSize(width: 148, height: 164)), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        let petSize = NSSize(width: 148 * store.petScale, height: 164 * store.petScale)
+        petWindow = NSPanel(contentRect: NSRect(origin: origin, size: petSize), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         petWindow.title = "\(store.selectedCharacter.name) 펫"
         petWindow.setAccessibilityRole(.window)
         petWindow.setAccessibilitySubrole(.floatingWindow)
@@ -82,12 +84,13 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         petWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         petWindow.isReleasedWhenClosed = false
         petView = DraggablePetView(frame: NSRect(origin: .zero, size: petWindow.frame.size))
+        petView.autoresizingMask = [.width, .height]
+        petView.animationEnabled = store.isPetVisible
         petView.owner = self
         petView.remainingPercent = store.remainingPercent
         petView.character = store.selectedCharacter
         petWindow.contentView = petView
         constrainPetToScreens()
-        petWindow.orderFrontRegardless()
         observation = store.objectWillChange.sink { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
@@ -96,10 +99,8 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         }
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "에이전트 펫")
+        statusItem.menu = makeMenu()
         updatePetPresentation()
-        animationTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.walk() }
-        }
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 120, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.store.refresh() }
         }
@@ -129,16 +130,79 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         petView.character = store.selectedCharacter
         petWindow.title = "\(store.selectedCharacter.name) 펫"
         usageWindow?.title = "\(store.selectedCharacter.name) 사용량"
-        statusItem.button?.toolTip = "\(store.selectedCharacter.name) · \(store.remainingPercent.map { "\(Int($0.rounded(.down)))% 남음" } ?? "연결 필요")"
-        statusItem.button?.setAccessibilityLabel("\(store.selectedCharacter.name) 펫")
-        statusItem.menu = makeMenu()
+        resizePet()
+        updatePetVisibility()
+        let usageTitle = store.menuBarTitle
+        let description = "\(store.selectedCharacter.name) · \(usageTitle) · \(store.isPetVisible ? "펫 표시 중" : "펫 숨김")"
+        statusItem.button?.toolTip = description
+        statusItem.button?.setAccessibilityLabel(description)
+    }
+
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        for item in menu.items {
+            if item.action == #selector(toggleUsage) {
+                item.title = "\(store.selectedCharacter.name) · 사용량 보기"
+            } else if item.action == #selector(selectCharacter), let name = item.representedObject as? String {
+                item.state = name == store.selectedCharacter.rawValue ? .on : .off
+            } else if item.action == #selector(selectPetSize), let scale = item.representedObject as? NSNumber {
+                item.state = abs(scale.doubleValue - store.petScale) < 0.0001 ? .on : .off
+            } else if item.action == #selector(togglePetVisibility) {
+                item.state = store.isPetVisible ? .on : .off
+            } else if item.action == #selector(toggleWandering) {
+                item.state = store.wanders ? .on : .off
+            }
+        }
+    }
+
+    private func resizePet() {
+        let size = NSSize(width: 148 * store.petScale, height: 164 * store.petScale)
+        let frame = petWindow.frame
+        guard frame.size != size else { return }
+        let resized = NSRect(
+            x: frame.midX - size.width / 2, y: frame.minY,
+            width: size.width, height: size.height
+        )
+        petWindow.setFrame(resized, display: true)
+        constrainPetToScreens()
+        savePosition()
+    }
+
+    private func updatePetVisibility() {
+        guard appliedPetVisibility != store.isPetVisible else { return }
+        appliedPetVisibility = store.isPetVisible
+        petView.animationEnabled = store.isPetVisible
+        animationTimer?.invalidate()
+        animationTimer = nil
+        if store.isPetVisible {
+            petWindow.orderFrontRegardless()
+            animationTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+                Task { @MainActor in self?.walk() }
+            }
+        } else {
+            petWindow.orderOut(nil)
+        }
+    }
+
+    private var statusButtonFrame: NSRect? {
+        guard let button = statusItem.button, let window = button.window else { return nil }
+        let rectangle = button.convert(button.bounds, to: nil)
+        return window.convertToScreen(rectangle)
     }
 
     @objc func toggleUsage() {
         if usageWindow?.isVisible == true { closeUsage(); return }
         let usagePanel = UsagePanel(store: store)
         let contentView = NSHostingView(rootView: usagePanel.content)
-        let screen = petWindow.screen?.visibleFrame ?? NSScreen.main!.visibleFrame
+        let usesStatusAnchor = !store.isPetVisible
+        let anchorScreen = usesStatusAnchor ? statusItem.button?.window?.screen : petWindow.screen
+        let screen = anchorScreen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? petWindow.frame
+        let anchor: NSRect
+        if usesStatusAnchor {
+            anchor = statusButtonFrame ?? NSRect(x: screen.midX, y: screen.maxY, width: 0, height: 0)
+        } else {
+            anchor = petWindow.frame
+        }
         let height = min(contentView.fittingSize.height, max(1, screen.height - 24))
         let hostingView = NSHostingView(rootView: usagePanel.frame(height: height))
         let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: UsagePanel.width, height: height), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -153,23 +217,30 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isReleasedWhenClosed = false
         panel.contentView = hostingView
-        let pet = petWindow.frame
-        let preferredX = pet.midX - UsagePanel.width / 2
+        let preferredX = anchor.midX - UsagePanel.width / 2
         let x = min(max(preferredX, screen.minX + 12), screen.maxX - UsagePanel.width - 12)
-        let above = pet.maxY + 8
-        let y = above + height <= screen.maxY - 12 ? above : max(screen.minY + 12, pet.minY - height - 8)
+        let preferredY: CGFloat
+        if usesStatusAnchor {
+            preferredY = anchor.minY - height - 8
+        } else {
+            let above = anchor.maxY + 8
+            preferredY = above + height <= screen.maxY - 12 ? above : anchor.minY - height - 8
+        }
+        let y = min(max(preferredY, screen.minY + 12), screen.maxY - height - 12)
         panel.setFrameOrigin(NSPoint(x: x, y: y))
         usageWindow = panel
         panel.orderFrontRegardless()
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                let mouse = NSEvent.mouseLocation
-                if self.usageWindow?.frame.contains(mouse) != true && !self.petWindow.frame.contains(mouse) {
-                    self.closeUsage()
-                }
-            }
+            Task { @MainActor in self?.dismissUsageIfOutside() }
         }
+    }
+
+    private func dismissUsageIfOutside() {
+        let mouse = NSEvent.mouseLocation
+        if usageWindow?.frame.contains(mouse) == true { return }
+        if store.isPetVisible && petWindow.frame.contains(mouse) { return }
+        if statusButtonFrame?.contains(mouse) == true { return }
+        closeUsage()
     }
 
     func closeUsage() {
@@ -182,9 +253,11 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
 
     private func makeMenu() -> NSMenu {
         let menu = NSMenu()
+        menu.delegate = self
         menu.addItem(withTitle: "\(store.selectedCharacter.name) · 사용량 보기", action: #selector(toggleUsage), keyEquivalent: "")
         menu.addItem(withTitle: "사용량 새로고침 / 연결", action: #selector(refreshUsage), keyEquivalent: "")
         let characters = NSMenu()
+        characters.delegate = self
         for character in PetCharacter.allCases {
             let choice = characters.addItem(withTitle: character.name, action: #selector(selectCharacter), keyEquivalent: "")
             choice.representedObject = character.rawValue
@@ -193,6 +266,20 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
         }
         let characterMenu = menu.addItem(withTitle: "펫 종류", action: nil, keyEquivalent: "")
         characterMenu.submenu = characters
+        let sizes = NSMenu()
+        sizes.delegate = self
+        for percent in [40, 55, 65, 80, 100, 120] {
+            let title = percent == 65 ? "65% (기본)" : "\(percent)%"
+            let choice = sizes.addItem(withTitle: title, action: #selector(selectPetSize), keyEquivalent: "")
+            let scale = Double(percent) / 100
+            choice.representedObject = NSNumber(value: scale)
+            choice.state = abs(store.petScale - scale) < 0.0001 ? .on : .off
+            choice.target = self
+        }
+        let sizeMenu = menu.addItem(withTitle: "펫 크기", action: nil, keyEquivalent: "")
+        sizeMenu.submenu = sizes
+        let visibility = menu.addItem(withTitle: "펫 표시", action: #selector(togglePetVisibility), keyEquivalent: "")
+        visibility.state = store.isPetVisible ? .on : .off
         menu.addItem(.separator())
         let wander = menu.addItem(withTitle: "느긋하게 산책하기", action: #selector(toggleWandering), keyEquivalent: "")
         wander.state = store.wanders ? .on : .off
@@ -205,6 +292,11 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func refreshUsage() { Task { await store.refresh(allowKeychainPrompt: true) } }
     @objc private func toggleWandering() { store.wanders.toggle() }
+    @objc private func togglePetVisibility() { store.isPetVisible.toggle() }
+    @objc private func selectPetSize(_ sender: NSMenuItem) {
+        guard let scale = sender.representedObject as? NSNumber else { return }
+        store.setPetScale(scale.doubleValue)
+    }
     @objc private func selectCharacter(_ sender: NSMenuItem) {
         guard let name = sender.representedObject as? String,
               let character = PetCharacter(rawValue: name) else { return }
@@ -213,13 +305,14 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate {
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func centerPet() {
         let screen = NSScreen.main?.visibleFrame ?? petWindow.frame
-        movePet(to: NSPoint(x: screen.midX - 74, y: screen.minY + 60))
+        store.isPetVisible = true
+        movePet(to: NSPoint(x: screen.midX - petWindow.frame.width / 2, y: screen.minY + 60))
         savePosition()
     }
     @objc private func screenChanged() { constrainPetToScreens(); closeUsage() }
 
     private func walk() {
-        guard store.wanders, !isDragging, usageWindow == nil,
+        guard store.isPetVisible, store.wanders, !isDragging, usageWindow == nil,
               !NSEvent.mouseLocation.isNear(petWindow.frame, padding: 24) else { return }
         let screen = petWindow.screen?.visibleFrame ?? NSScreen.main!.visibleFrame
         var origin = petWindow.frame.origin

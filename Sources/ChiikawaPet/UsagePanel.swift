@@ -46,6 +46,38 @@ struct UsagePanel: View {
                     }
                 }
             }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("펫 크기").font(.system(size: 12, weight: .semibold))
+                    Text("\(Int((store.petScale * 100).rounded()))%")
+                        .font(.system(size: 12, weight: .medium)).monospacedDigit()
+                    Spacer()
+                    Button("기본값 65%") {
+                        store.setPetScale(UsageStore.defaultPetScale)
+                    }
+                    .controlSize(.small)
+                    .accessibilityLabel("펫 크기를 기본값 65%로 재설정")
+                }
+                Slider(
+                    value: Binding(get: { store.petScale }, set: { store.setPetScale($0) }),
+                    in: UsageStore.petScaleRange,
+                    step: 0.05
+                ) {
+                    Text("펫 크기")
+                } minimumValueLabel: {
+                    Text("40%").font(.system(size: 10))
+                } maximumValueLabel: {
+                    Text("120%").font(.system(size: 10))
+                }
+                .accessibilityLabel("펫 크기")
+                .accessibilityValue("\(Int((store.petScale * 100).rounded()))%")
+                Toggle("화면에 펫 표시", isOn: $store.isPetVisible)
+                    .toggleStyle(.switch).controlSize(.small).font(.system(size: 12))
+                    .accessibilityLabel("화면에 펫 표시")
+                Text("숨겨도 메뉴바에서 사용량과 펫을 확인할 수 있어요.")
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if store.previewPercent != nil {
                 Text("표정 미리보기 · 실제 사용량이 아닙니다")
                     .font(.system(size: 11, weight: .semibold)).foregroundStyle(.orange)

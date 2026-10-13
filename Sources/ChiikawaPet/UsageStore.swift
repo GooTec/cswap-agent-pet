@@ -9,6 +9,8 @@ struct ProviderDisplay: Sendable {
 
 @MainActor
 final class UsageStore: ObservableObject {
+    static let defaultPetScale = 0.65
+    static let petScaleRange = 0.4...1.2
     @Published private(set) var providers: [ProviderDisplay] = UsageProvider.allCases.map {
         ProviderDisplay(provider: $0)
     }
@@ -18,6 +20,10 @@ final class UsageStore: ObservableObject {
     }
     @Published var selectedCharacter: PetCharacter {
         didSet { preferences.set(selectedCharacter.rawValue, forKey: "petCharacter") }
+    }
+    @Published private(set) var petScale: Double
+    @Published var isPetVisible: Bool {
+        didSet { preferences.set(isPetVisible, forKey: "petVisible") }
     }
     let previewPercent: Double?
     private let usageFetching: any UsageFetching
@@ -30,6 +36,13 @@ final class UsageStore: ObservableObject {
         wanders = preferences.object(forKey: "wanders") as? Bool ?? true
         let savedCharacter = preferences.string(forKey: "petCharacter") ?? ""
         selectedCharacter = PetCharacter(rawValue: savedCharacter) ?? .chiikawa
+        let savedScale = preferences.object(forKey: "petScale") as? Double
+        if let savedScale, savedScale.isFinite, Self.petScaleRange.contains(savedScale) {
+            petScale = savedScale
+        } else {
+            petScale = Self.defaultPetScale
+        }
+        isPetVisible = preferences.object(forKey: "petVisible") as? Bool ?? true
         if let previewPercent {
             for index in providers.indices {
                 let window = try! QuotaWindow(title: "5시간", usedPercent: 100 - previewPercent, resetsAt: nil)
@@ -48,6 +61,35 @@ final class UsageStore: ObservableObject {
     }
 
     var mood: PetMood { .forRemaining(remainingPercent) }
+
+    func setPetScale(_ scale: Double) {
+        guard scale.isFinite else { return }
+        petScale = min(max(scale, Self.petScaleRange.lowerBound), Self.petScaleRange.upperBound)
+        preferences.set(petScale, forKey: "petScale")
+    }
+
+    var menuBarTitle: String {
+        let claude = menuBarRemaining(for: .claude)
+        let codex = menuBarRemaining(for: .codex)
+        return "Claude \(claude) · Codex \(codex)"
+    }
+
+    var menuBarPresentation: MenuBarPresentation {
+        let claude = providers.first { $0.provider == .claude && $0.error == nil }?.reading
+        let codex = providers.first { $0.provider == .codex && $0.error == nil }?.reading
+        let primary = claude?.windows.first?.remainingPercent
+        let secondary = claude.flatMap { $0.windows.count > 1 ? $0.windows[1].remainingPercent : nil }
+        return MenuBarPresentation(
+            character: selectedCharacter, mood: mood,
+            claudePrimary: primary, claudeSecondary: secondary, codex: codex?.remainingPercent
+        )
+    }
+
+    private func menuBarRemaining(for provider: UsageProvider) -> String {
+        guard let display = providers.first(where: { $0.provider == provider }),
+              display.error == nil, let percent = display.reading?.remainingPercent else { return "—" }
+        return "\(Int(percent.rounded(.down)))%"
+    }
 
     func refresh(allowKeychainPrompt: Bool = false) async {
         guard !isRefreshing, previewPercent == nil else { return }
