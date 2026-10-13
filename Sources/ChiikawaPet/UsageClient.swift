@@ -136,15 +136,28 @@ actor UsageClient: UsageFetching {
     }
 
     private func keychainCredential(service: String, account: String?, allowPrompt: Bool) throws -> Data? {
-        let authenticationContext = LAContext()
-        authenticationContext.interactionNotAllowed = !allowPrompt
+        // CLI credentials use legacy ACLs; LAContext alone can still wait for authorization.
+        var interactionWasAllowed = DarwinBoolean(true)
+        if !allowPrompt {
+            guard SecKeychainGetUserInteractionAllowed(&interactionWasAllowed) == errSecSuccess,
+                  SecKeychainSetUserInteractionAllowed(false) == errSecSuccess else {
+                throw UsageFailure.keychainDenied
+            }
+        }
+        defer {
+            if !allowPrompt { SecKeychainSetUserInteractionAllowed(interactionWasAllowed.boolValue) }
+        }
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-            kSecUseAuthenticationContext as String: authenticationContext
+            kSecMatchLimit as String: kSecMatchLimitOne
         ]
+        if allowPrompt {
+            query[kSecUseAuthenticationContext as String] = LAContext()
+        } else {
+            query[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUIFail
+        }
         if let account { query[kSecAttrAccount as String] = account }
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
