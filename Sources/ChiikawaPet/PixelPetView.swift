@@ -143,15 +143,14 @@ class PixelPetView: NSView {
         }
         let column: Int
         if mood == .crying {
-            column = animationFrame % 8
+            column = (animationFrame / 3) % 8
         } else if animationFrame % 40 >= 38 {
             column = 6 + animationFrame % 2
         } else {
             column = animationFrame % 6
         }
         let bob = (animationFrame / 8) % 4 == 2 ? -1 : 0
-        let shake = mood == .crying ? (animationFrame % 4 == 0 ? -1 : animationFrame % 4 == 2 ? 1 : 0) : 0
-        context.translateBy(x: CGFloat(shake), y: CGFloat(bob) + Self.spriteSize.height)
+        context.translateBy(x: 0, y: CGFloat(bob) + Self.spriteSize.height)
         context.scaleBy(x: 1, y: -1)
         let frame = Self.frames[character]![row * 8 + column]
         context.draw(frame, in: CGRect(origin: .zero, size: Self.spriteSize))

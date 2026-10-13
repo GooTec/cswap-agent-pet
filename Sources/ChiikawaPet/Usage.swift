@@ -69,7 +69,7 @@ enum PetMood: String, Sendable {
         case .happy: "오늘도 같이 힘내자"
         case .uneasy: "조금씩 아껴 쓰자…"
         case .sad: "이제 얼마 안 남았어…"
-        case .crying: "후에엥… 잠깐 쉬자"
+        case .crying: "울먹… 잠깐 쉬었다 가자"
         case .unknown: "연결하면 기분을 알려줄게"
         }
     }
