@@ -57,6 +57,8 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var observation: AnyCancellable?
     private var clickMonitor: Any?
     private var appliedPetVisibility: Bool?
+    private var appliedMenuPresentation: MenuBarPresentation?
+    private var appearanceObservation: NSKeyValueObservation?
     private var direction: CGFloat = -1
     private var isDragging = false
 
@@ -97,9 +99,17 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self.updatePetPresentation()
             }
         }
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "에이전트 펫")
+        let statusName = "ChiikawaPetUsage"
+        statusItem = NSStatusBar.system.statusItem(withLength: 0)
+        statusItem.autosaveName = statusName
+        statusItem.length = MenuBarArtwork.width + 12
+        statusItem.isVisible = true
+        statusItem.button?.imagePosition = .imageOnly
+        statusItem.button?.imageScaling = .scaleNone
         statusItem.menu = makeMenu()
+        appearanceObservation = statusItem.button?.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            Task { @MainActor in self?.updateMenuBarArtwork(force: true) }
+        }
         updatePetPresentation()
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 120, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.store.refresh() }
@@ -134,10 +144,17 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updatePetVisibility()
         let usageTitle = store.menuBarTitle
         let description = "\(store.selectedCharacter.name) · \(usageTitle) · \(store.isPetVisible ? "펫 표시 중" : "펫 숨김")"
+        updateMenuBarArtwork()
         statusItem.button?.toolTip = description
         statusItem.button?.setAccessibilityLabel(description)
     }
 
+    private func updateMenuBarArtwork(force: Bool = false) {
+        let presentation = store.menuBarPresentation
+        guard force || presentation != appliedMenuPresentation, let button = statusItem.button else { return }
+        appliedMenuPresentation = presentation
+        button.image = MenuBarArtwork.image(for: presentation, appearance: button.effectiveAppearance)
+    }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         for item in menu.items {
