@@ -2,6 +2,8 @@
 
 macOS 화면 위에 떠다니는 비공식 치이카와·하치와레·우사기 도트 펫. 클릭하면 Claude·Codex 구독 사용량의 **잔여 퍼센트**를 확인합니다. Swift/AppKit/SwiftUI만 사용하며 외부 패키지 의존성이 없습니다.
 
+**Windows 10/11 버전:** 기존 도트 리소스를 사용하는 C# / WPF 앱도 포함합니다. 포터블 실행과 빌드는 [Windows 안내](Windows/README.md)를 확인하세요.
+
 ## 실행
 
 macOS 14 이상과 Swift 6 이상이 필요합니다. 개발 도구가 없으면 `xcode-select --install`로 설치하세요.
