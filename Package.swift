@@ -10,7 +10,12 @@ let package = Package(
         .executableTarget(
             name: "ChiikawaPet",
             path: ".",
-            exclude: ["build", "macos/Tests", "macos/Resources", "windows", "scripts", "README.md", "Launch.command"].filter {
+            exclude: [
+                "build", "macos/Tests", "macos/Resources", "macos/README.md", "macos/README.ko.md",
+                "windows", "scripts", "docs",
+                "README.md", "README.ko.md", "CHANGELOG.md", "LICENSE", "VERSION", "Launch.command",
+                "assets/NOTICE.md"
+            ].filter {
                 FileManager.default.fileExists(atPath: URL(fileURLWithPath: #filePath)
                     .deletingLastPathComponent().appendingPathComponent($0).path)
             },

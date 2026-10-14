@@ -8,10 +8,23 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>ChiikawaPet</AssemblyName>
+    <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)../VERSION').Trim())</Version>
+    <AssemblyVersion>$(Version).0</AssemblyVersion>
+    <FileVersion>$(Version).0</FileVersion>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Checks/**/*.cs" />
     <Resource Include="../assets/*.png" Link="Sprites/%(Filename)%(Extension)" />
   </ItemGroup>
+  <Target Name="IncludeRuntimeNotices" AfterTargets="Publish">
+    <ItemGroup>
+      <RuntimeNotice Include="%(ResolvedRuntimePack.PackageDirectory)/LICENSE*;%(ResolvedRuntimePack.PackageDirectory)/THIRD-PARTY-NOTICES*"
+                     Condition="'%(ResolvedRuntimePack.FrameworkName)' == 'Microsoft.NETCore.App' Or '%(ResolvedRuntimePack.FrameworkName)' == 'Microsoft.WindowsDesktop.App'">
+        <PackageId>%(ResolvedRuntimePack.Identity)</PackageId>
+      </RuntimeNotice>
+    </ItemGroup>
+    <Copy SourceFiles="@(RuntimeNotice)" DestinationFolder="$(PublishDir)licenses/%(RuntimeNotice.PackageId)" />
+  </Target>
 </Project>

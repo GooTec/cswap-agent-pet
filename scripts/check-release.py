@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""Check release packages and write SHA256SUMS. Uses only Python's standard library."""
+import hashlib
+import json
+from pathlib import Path
+import re
+import struct
+import sys
+import zipfile
+
+root = Path(__file__).resolve().parent.parent
+version = (root / "VERSION").read_text().strip()
+if not re.fullmatch(r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", version):
+    raise SystemExit("VERSION must contain MAJOR.MINOR.PATCH")
+directory = Path(sys.argv[1]) if len(sys.argv) == 2 else root / "build/release" / version
+expected = [f"ChiikawaPet-{version}-macos-arm64.dmg", f"ChiikawaPet-{version}-macos-x86_64.dmg",
+            f"ChiikawaPet-{version}-win-x64-setup.exe", f"ChiikawaPet-{version}-win-x64.zip"]
+for name in expected:
+    path = directory / name
+    if not path.is_file() or path.stat().st_size == 0:
+        raise SystemExit(f"Missing or empty release package: {name}")
+    if name.endswith(".dmg"):
+        with path.open("rb") as stream:
+            stream.seek(-512, 2)
+            if stream.read(4) != b"koly":
+                raise SystemExit(f"Invalid DMG trailer: {name}")
+    if name.endswith(".exe"):
+        with path.open("rb") as stream:
+            header = stream.read(64)
+            if header[:2] != b"MZ":
+                raise SystemExit(f"Invalid Windows executable: {name}")
+            stream.seek(struct.unpack_from("<I", header, 0x3C)[0])
+            if stream.read(4) != b"PE\0\0":
+                raise SystemExit(f"Invalid PE signature: {name}")
+    if name.endswith(".zip"):
+        with zipfile.ZipFile(path) as archive:
+            names = set(archive.namelist())
+            required = {"ChiikawaPet.exe", "ChiikawaPet.dll", "ChiikawaPet.deps.json", "coreclr.dll",
+                        "PresentationFramework.dll", "README.md", "README.ko.md", "LICENSE",
+                        "ARTWORK-NOTICE.md", "VERSION"}
+            if not required <= names or archive.testzip() is not None:
+                raise SystemExit(f"Incomplete or corrupt portable ZIP: {name}")
+            for package in ('Microsoft.NETCore.App.Runtime.win-x64', 'Microsoft.WindowsDesktop.App.Runtime.win-x64'):
+                if not any(name.startswith(f'licenses/{package}/LICENSE') for name in names):
+                    raise SystemExit(f'Missing runtime license: {package}')
+            if archive.read("VERSION").decode().strip() != version:
+                raise SystemExit("Portable ZIP version does not match VERSION")
+            dependencies = json.loads(archive.read("ChiikawaPet.deps.json"))
+            if f"ChiikawaPet/{version}" not in dependencies["libraries"]:
+                raise SystemExit("Windows app version does not match VERSION")
+            assembly = archive.read("ChiikawaPet.dll")
+            for sprite in ("chiikawa", "hachiware", "usagi", "claude-logo", "codex-logo"):
+                if f"sprites/{sprite}.png".encode("utf-16le") not in assembly:
+                    raise SystemExit(f"Missing embedded PNG: {sprite}")
+checksums = []
+for name in expected:
+    with (directory / name).open("rb") as stream:
+        checksums.append(f"{hashlib.file_digest(stream, 'sha256').hexdigest()}  {name}\n")
+(directory / "SHA256SUMS").write_text("".join(checksums))
+print(f"Verified {len(expected)} release packages for v{version}; wrote SHA256SUMS")

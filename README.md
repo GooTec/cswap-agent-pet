@@ -1,102 +1,201 @@
-# 치이카와 펫
+# Chiikawa Agent Pet
 
-macOS 화면 위에 떠다니는 비공식 치이카와·하치와레·우사기 도트 펫. 클릭하면 Claude·Codex 구독 사용량의 **잔여 퍼센트**를 확인합니다. Swift/AppKit/SwiftUI만 사용하며 외부 패키지 의존성이 없습니다.
+[English](README.md) | [한국어](README.ko.md)
 
-**Windows 10/11 버전:** 기존 도트 리소스를 사용하는 C# / WPF 앱도 포함합니다. 포터블 실행과 빌드는 [Windows 안내](windows/README.md)를 확인하세요.
+An unofficial pixel-art desktop companion for macOS and Windows. Choose Chiikawa,
+Hachiware, or Usagi and check your remaining Claude and Codex subscription quotas.
+Your pet's expression changes with the lowest currently available quota.
 
-## 소스 구조
+## Features
+
+- Animated, transparent pets that float above regular windows.
+- Character selection, dragging, optional wandering, and saved preferences.
+- Adjustable size from 40% to 120%, with a default of 65%.
+- Quota details, reset times, manual refresh, and automatic updates every two minutes.
+- macOS menu-bar controls and Windows system-tray controls, even when the pet is hidden.
+- Existing Claude Code and Codex logins; no separate account or server.
+
+The application currently uses Korean interface labels. Windows GUI behavior is
+still experimental; see [known limitations](#privacy-and-known-limitations).
+
+## Installation
+
+Find versioned packages on [GitHub Releases](https://github.com/meengi07/chiikawa-agent-pet/releases).
+The first release is `v1.0.0`; packages become downloadable when that release is published.
+
+| Platform | Package | Installation |
+|---|---|---|
+| macOS 14+, Apple Silicon | `ChiikawaPet-1.0.0-macos-arm64.dmg` | Open the DMG and drag the app to Applications. |
+| macOS 14+, Intel | `ChiikawaPet-1.0.0-macos-x86_64.dmg` | Open the DMG and drag the app to Applications. |
+| Windows 10/11, x64 | `ChiikawaPet-1.0.0-win-x64-setup.exe` | Run the installer, then open Chiikawa Pet from the Start menu. |
+| Windows 10/11, x64 | `ChiikawaPet-1.0.0-win-x64.zip` | Extract **all** files and run `ChiikawaPet.exe`. |
+
+The Windows packages include .NET. The installer uses the current user's
+`%LOCALAPPDATA%\Programs\ChiikawaPet` directory and adds an uninstall entry.
+The portable EXE needs the other extracted files beside it.
+
+Current packages are not signed with an Apple Developer ID or a Windows
+code-signing certificate. If the OS blocks a download, review the source and
+release checksums before using the OS's option to open or run it.
+
+## Connecting accounts
+
+1. Sign in to Claude Code with `/login`, or sign in to Codex with `codex login`.
+2. Launch the pet, click it to open the usage panel, and select **새로고침** (Refresh).
+
+API-key billing does not provide subscription quota percentages.
+
+| Platform | Claude credentials | Codex credentials |
+|---|---|---|
+| macOS | `~/.claude/.credentials.json`, or the `Claude Code-credentials` keychain entry | `~/.codex/auth.json`, or the `Codex Auth` keychain entry for the configured home |
+| Windows | `%USERPROFILE%\.claude\.credentials.json` | `%USERPROFILE%\.codex\auth.json` |
+
+On macOS, automatic refresh does not open a keychain authorization dialog. Use
+manual Refresh when keychain access needs permission. Windows Credential
+Manager-only accounts are not supported. Windows does not automatically discover
+WSL credentials; see the [Windows guide](windows/README.md).
+
+`CLAUDE_CONFIG_DIR` and `CODEX_HOME` override the default paths. Launch the app from
+the terminal that defines them. Finder-launched apps do not inherit your shell's
+environment; run the app's executable directly when using custom paths.
+Expired credentials must be refreshed through the original CLI. The pet does not
+renew tokens or modify credential files or keychain entries.
+
+## Usage
+
+| Action | Result |
+|---|---|
+| Click the pet | Toggle the usage panel |
+| Drag the pet | Move it and save its position |
+| Right-click the pet | Open the control menu |
+| Click the macOS menu-bar item | Open the control menu |
+| Left-click / right-click the Windows tray icon | Toggle the panel / open the control menu |
+| Use the panel | Select a character, change size, toggle wandering or visibility, refresh, or quit |
+
+The macOS app has no Dock icon. The Windows app has no taskbar button; check the
+notification area's `^` overflow if its tray icon is hidden. Hiding the pet keeps
+its menu-bar or tray controls available and stops its animation. Wandering pauses
+near the pointer and while the usage panel is open.
+
+### Quotas and expressions
+
+Remaining quota is `100 − utilization`. The expression uses the lowest quota
+among successful, current provider readings, rather than a sum or average.
+Displayed integers round down; expression thresholds use the original decimals.
+
+| Remaining quota | Expression |
+|---|---|
+| 95–100% | Delighted |
+| 60% to below 95% | Happy |
+| 30% to below 60% | Uneasy |
+| Above 10% to below 30% | Sad |
+| 0–10%, including exactly 10% | Crying |
+| No valid reading | Unknown; never treated as 0% |
+
+Only reported quota windows are shown. Failed readings are excluded from the
+expression and current menu-bar or tray values. Previous readings can remain in
+the panel with an error and a stale-data label.
+
+## Development
+
+Clone the repository and run commands from its root:
+
+```sh
+git clone https://github.com/meengi07/chiikawa-agent-pet.git
+cd chiikawa-agent-pet
+```
+
+| Platform | Stack | Source-build requirements |
+|---|---|---|
+| macOS | Swift, AppKit, SwiftUI | macOS 14+, Swift 6+, Xcode or Command Line Tools |
+| Windows | C#, .NET 10, WPF; Windows Forms tray icon | .NET 10 SDK; NSIS for the installer |
+
+### macOS
+
+Install Command Line Tools with `xcode-select --install` if needed, then:
+
+```sh
+./Launch.command
+./scripts/test.sh
+```
+
+`Launch.command` builds and opens `build/ChiikawaPet.app`.
+`test.sh` also supports Command Line Tools without full Xcode.
+
+### Windows
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-windows.ps1
+```
+
+This runs the logic checks and creates a self-contained app and portable ZIP.
+Use `-Runtime win-arm64` for an ARM64 portable build. To create an x64 installer,
+install [NSIS](https://nsis.sourceforge.io/Download) and run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package-windows.ps1
+```
+
+The Windows target can also be compiled from macOS or Linux:
+
+```sh
+dotnet run --project windows/Checks/Checks.csproj -c Release
+dotnet publish windows/ChiikawaPet.csproj -c Release -r win-x64 --self-contained true -o build/windows/win-x64
+```
+
+### Project structure
 
 ```text
-macos/
-  Sources/ChiikawaPet/        Swift · AppKit · SwiftUI, 메뉴바와 펫 창
-  Tests/ChiikawaPetTests/     macOS 테스트
-  Resources/Info.plist        macOS 앱 정보
-windows/
-  PetApp.cs                  C# · WPF, 트레이와 펫 창
-  Usage.cs · Settings.cs      Windows 사용량 조회와 설정
-  Checks/                    Windows 로직 검사
-assets/                      두 앱이 함께 사용하는 PNG 스프라이트와 로고
-scripts/                     OS별 빌드와 검사
-Package.swift                macOS 빌드 설정
+macos/       Swift sources, tests, and macOS app metadata
+windows/     C# sources, logic checks, and installer definition
+assets/      Shared sprite sheets and provider logos
+scripts/     Build, test, packaging, and release checks
+docs/        Release guide and release notes
+VERSION      Shared MAJOR.MINOR.PATCH release version
 ```
 
-앱 코드와 인증·설정 처리는 OS별로 구현합니다. 공용 이미지는 `assets/` 한 곳에서 관리하고 Swift Package와 Windows 프로젝트가 각각 앱에 포함합니다. 빌드 명령은 저장소 루트에서 실행하세요.
+Platform code stays separate. Both applications embed the same PNG files from
+`assets/`. Sprite sheets contain eight columns and six expression rows, with
+64×80-pixel frames.
 
-## macOS 실행
+### Previews
 
-macOS 14 이상과 Swift 6 이상이 필요합니다. 개발 도구가 없으면 `xcode-select --install`로 설치하세요.
-
-- `Launch.command`를 더블클릭하면 빌드 후 실행합니다.
-- 이미 빌드했다면 `build/ChiikawaPet.app`을 더블클릭하세요. 이 앱을 응용 프로그램 폴더로 복사해 사용할 수도 있습니다.
-- 터미널에서는 `./Launch.command` 또는 `./scripts/build-app.sh && open build/ChiikawaPet.app`을 실행합니다.
-
-투명한 펫 창은 다른 일반 창보다 위에 표시됩니다. Dock 아이콘 없이 메뉴바의 선택한 캐릭터와 Claude·Codex 로고로 제어합니다. 기본 펫 크기는 기존 크기의 **65%**입니다.
-
-| 조작 | 동작 |
-|---|---|
-| 펫 클릭 | 사용량 패널 열기 / 닫기 |
-| 패널의 캐릭터 카드 | 치이카와·하치와레·우사기 선택, 즉시 변경 및 다음 실행에 복원 |
-| 펫 드래그 | 위치 이동, 다음 실행에 복원 |
-| 펫 우클릭 / 메뉴바 펫·서비스 로고 | 사용량·펫 종류·크기·표시 여부·새로고침·산책·화면 가운데 이동·종료 |
-| 패널의 새로고침 | 로그인 정보 연결 및 최신 잔여량 조회 |
-| 산책 스위치 | 느린 좌우 이동 켜기 / 끄기 |
-| 펫 크기 슬라이더 | 40–120% 조절, 기본값 65%로 재설정, 다음 실행에 복원 |
-| 화면에 펫 표시 스위치 | 데스크톱 펫 숨기기 / 다시 표시하기, 다음 실행에 복원 |
-
-마우스가 펫 가까이에 있거나 사용량 패널이 열리면 산책을 멈춥니다. 패널 밖을 클릭하면 패널이 닫힙니다.
-
-펫을 숨겨도 메뉴바의 캐릭터·서비스 로고·잔여량과 사용량 패널은 유지됩니다. 숨긴 펫의 산책·애니메이션 타이머는 중지합니다. Claude는 조회된 첫 두 한도의 잔여량을 위아래로 표시하고, Codex는 조회된 한도 중 최솟값을 표시합니다. 조회 실패·미연결은 `—`이며 이전 값을 현재 잔여량처럼 보여주지 않습니다. 로고와 숫자는 메뉴바 테마에 맞춰 표시합니다.
-
-메뉴바 항목은 고정된 이름과 폭을 사용하고, 사용량 갱신 때 항목·메뉴를 다시 만들지 않습니다. macOS의 저장 위치는 유지하되 Hidden Bar의 숨김 정책이나 사용자의 메뉴 막대 표시 설정을 강제로 변경하지 않습니다. 현재 Mac에서는 Hidden Bar 종료 시 메뉴바 표시를 확인했지만, Hidden Bar 바깥 배치 후 접기 동작의 최종 검증은 완료하지 못했습니다.
-
-## 캐릭터 디자인
-
-사용자가 제공한 도트 레퍼런스에서 세 캐릭터를 투명 스프라이트로 추출했습니다. 원본의 둥근 얼굴·귀·작은 몸·색감을 유지하고, 잔여량에 따라 눈·입·눈물만 바뀝니다. 패널의 카드와 우클릭 메뉴에서 선택하며, 선택 상태는 이 Mac에 저장합니다.
-
-PNG 스프라이트 시트는 64×80 픽셀 프레임의 8열·6행입니다. 행 순서는 활짝 웃음, 미소, 걱정, 울상, 울음, 미연결이며, 열은 애니메이션 프레임입니다. 앱은 프레임을 한 번 읽어 캐시하고 보간 없이 확대합니다. 사용량 패널은 화면 높이에 맞추고, 내용이 길어지면 스크롤할 수 있습니다.
-
-
-## 실제 계정 연결
-
-- **Claude:** Claude Code에서 `/login`으로 구독 계정에 로그인합니다. 기본 `~/.claude/.credentials.json` 또는 `Claude Code-credentials` 키체인의 OAuth 정보를 사용합니다.
-- **Codex:** `codex login`으로 ChatGPT 계정에 로그인합니다. 기본 `~/.codex/auth.json` 또는 해당 설정 경로에 연결된 `Codex Auth` 키체인의 OAuth 정보를 사용합니다. API 키 요금제는 구독 잔여 %가 없으므로 별도로 안내합니다.
-- 자동 조회는 키체인 인증 창을 띄우지 않습니다. 접근이 거부된 경우 패널의 새로고침을 누르고 macOS 키체인 접근을 허용하세요.
-- 인증이 만료되면 기존 CLI를 실행하거나 다시 로그인한 뒤 새로고침하세요. 이 앱은 CLI 토큰을 갱신하거나 인증 파일·키체인을 수정하지 않습니다.
-- `CLAUDE_CONFIG_DIR`, `CODEX_HOME` 환경 변수도 지원합니다. Finder로 실행한 앱은 터미널의 환경 변수를 상속하지 않으므로, 커스텀 경로는 해당 변수를 설정하고 앱 내부 실행 파일을 직접 실행하세요. 커스텀 Claude 경로는 다른 계정과 혼동하지 않도록 기본 키체인을 읽지 않습니다.
-
-토큰은 기존 로컬 파일·키체인에서 읽어 해당 제공자의 HTTPS 사용량 엔드포인트에만 전송합니다. 별도 서버, 브라우저 쿠키 수집, 토큰 로그·저장 기능은 없습니다.
-
-## 잔여량과 표정
-
-잔여량은 `100 − 사용률`입니다. 각 서비스의 숫자는 조회된 기간별·모델별 한도 중 최솟값이며, 펫 표정은 정상 조회된 두 서비스의 최솟값을 기준으로 합니다. 합산하거나 평균 내지 않습니다. 기간별 잔여량과 초기화 시각은 패널에서 별도로 표시합니다. 정수 표시는 내림하고, 표정 경계는 원래 소수 퍼센트로 판정합니다.
-
-| 잔여량 | 표정 |
-|---|---|
-| 95–100% | 활짝 웃음과 반짝임 |
-| 60% 이상, 95% 미만 | 미소 |
-| 30% 이상, 60% 미만 | 걱정 |
-| 10% 초과, 30% 미만 | 울상 |
-| **10% 이하** | 눈가에 맺혀 반짝이는 작은 눈물, 가끔 떨어지는 한 방울 — 긴 눈물 줄기와 몸 떨림 없음 |
-| 조회값 없음 | 물음표, 연결 안내 — 0%로 취급하지 않음 |
-
-앱 시작 시 조회하고 2분마다 갱신합니다. 조회 실패 시 이전 값은 흐리게 표시하고 오류·기존 조회 시각을 함께 남깁니다. 실패한 서비스의 이전 값은 표정 계산에서 제외합니다. Codex가 주간 한도만 제공하면 주간만 표시하며, 없는 5시간 한도를 만들어내지 않습니다.
-
-사용량 엔드포인트는 공개된 관측 계약에 기반하며 공식적으로 안정성이 보장된 API가 아닙니다. 제공자의 응답·정책 변경으로 연동 수정이 필요할 수 있습니다. 참고: [Claude OAuth 동작](https://github.com/steipete/CodexBar/blob/main/docs/claude.md), [Codex 사용량 응답](https://github.com/gubasso/codex-session/blob/develop/docs/wham-usage-api-spec.md), [Codex 키체인 저장 계약](https://github.com/openai/codex/blob/main/codex-rs/login/src/auth/storage.rs).
-
-## 검증
+Quit the running pet first. Previews do not request real account usage.
 
 ```sh
-./scripts/test.sh
-build/ChiikawaPet.app/Contents/MacOS/ChiikawaPet --usage
-```
-
-`test.sh`는 Xcode 없이 Command Line Tools만 설치된 환경에서도 포함된 Swift Testing 프레임워크 경로를 사용합니다. `--usage`는 실제 로그인으로 조회한 퍼센트 또는 연결 오류만 출력합니다.
-
-표정 미리보기는 기존 앱을 종료한 뒤 실행합니다. 미리보기 패널에는 실제 사용량이 아니라는 표시가 있으며 네트워크 조회를 하지 않습니다.
-
-```sh
-open -n build/ChiikawaPet.app --args --preview 100 --show-usage
 open -n build/ChiikawaPet.app --args --preview 10 --show-usage
 ```
 
-캐릭터 이미지는 사용자가 제공한 레퍼런스에서 파생되었습니다. Chiikawa 원작·브랜드와 제휴한 앱이 아니며, 배포 시 캐릭터와 원본 도트 이미지의 권리를 별도로 확인하세요.
+```powershell
+.\build\windows\win-x64\ChiikawaPet.exe --preview 10 --show-usage
+```
+
+## Releases and versioning
+
+[VERSION](VERSION) is the source of truth for application versions and package
+filenames. See the [release guide](docs/RELEASING.md) and [changelog](CHANGELOG.md).
+Release automation builds the platform packages and creates a **draft** GitHub
+Release for matching `vMAJOR.MINOR.PATCH` tags. Publishing the draft is a separate step.
+
+## Privacy and known limitations
+
+- Existing tokens are sent only to the corresponding provider's HTTPS usage endpoint. There is no separate backend, browser-cookie collection, or token logging/storage.
+- Usage endpoints are observed interfaces, not guaranteed stable public APIs. Provider changes can break the integration.
+- Windows GUI, installer execution, and mixed-DPI behavior require Windows validation. Cross-compilation and logic checks do not establish visual correctness.
+- Hidden Bar placement and collapse behavior on macOS have not been fully verified.
+- Signing and notarization are not configured. Installer builds and source-code licensing do not grant rights to third-party artwork.
+
+## Contributing
+
+Bug reports and pull requests are welcome. Include your OS, architecture, steps
+to reproduce, and relevant errors. Do not include tokens or credential files.
+Run the checks for the platform you change and keep shared artwork in `assets/`.
+When changing documentation, update both English and Korean versions.
+
+## License and credits
+
+Source code, scripts, and documentation are licensed under the [MIT License](LICENSE).
+Character artwork and provider logos are **excluded**; see the [artwork notice](assets/NOTICE.md).
+Bundled .NET components keep their own license notices under `licenses/` in Windows packages.
+The sprites were derived from supplied pixel-art references. This project is
+unofficial and is not affiliated with Chiikawa.
