@@ -6,6 +6,15 @@ An unofficial pixel-art desktop companion for macOS and Windows. Choose Chiikawa
 Hachiware, or Usagi and check your remaining Claude and Codex subscription quotas.
 Your pet's expression changes with the lowest currently available quota.
 
+## Preview
+
+| Character selection and animation | Usage panel |
+|---|---|
+| <img src="docs/images/mac-demo.gif" width="320" alt="macOS UI recording showing Chiikawa, Hachiware, and Usagi selection"> | <img src="docs/images/mac-usage.png" width="320" alt="macOS usage panel with character controls and simulated Claude and Codex quotas"> |
+
+Real macOS UI captures using preview mode and simulated quotas. The app's
+interface is currently Korean; the displayed percentages are demo values.
+
 ## Features
 
 - Animated, transparent pets that float above regular windows.
