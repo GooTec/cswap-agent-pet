@@ -1,18 +1,28 @@
 # Changelog
 
-Release versions follow `MAJOR.MINOR.PATCH`. The current version is stored in
-[VERSION](VERSION).
+mac and Windows are versioned independently through [mac/VERSION](mac/VERSION)
+and [windows/VERSION](windows/VERSION).
 
-## 1.0.0 — 2026-10-14
+## mac 1.0.0 — 2026-10-14
 
-- Add floating Chiikawa, Hachiware, and Usagi pets for macOS and Windows.
-- Display remaining Claude and Codex subscription quotas, reset times, and connection errors.
-- Change expressions using the lowest currently available quota.
-- Support character selection, dragging, size adjustment, visibility, wandering, and saved preferences.
-- Keep macOS menu-bar controls and Windows notification-area controls available when the pet is hidden.
-- Separate platform source code and share sprite and logo assets.
-- Add English and Korean documentation, an MIT source-code license, and a separate artwork notice.
-- Package macOS DMGs, a Windows installer, and a Windows portable ZIP with versioned filenames.
+- Animated Chiikawa, Hachiware, and Usagi pets with Swift/AppKit/SwiftUI.
+- Claude and Codex quota details, expressions, reset times, and menu-bar controls.
+- Saved character, size, position, visibility, and wandering preferences.
+- Apple Silicon and Intel DMG packages with English/Korean documentation and an artwork notice.
 
-Windows GUI, installer execution, and mixed-DPI behavior still need validation on Windows.
-Current packages are not signed with an Apple Developer ID or a Windows code-signing certificate.
+## Windows 1.0.0 — 2026-10-14
+
+- C#/.NET 10/WPF pets with notification-area controls and saved preferences.
+- Concurrent Claude/Codex quota refresh using local CLI credential files.
+- Current-user installer and portable ZIP, including .NET runtime licenses.
+- Fix the NSIS payload wildcard to use the Windows path separator.
+- Automated installation, preview-startup, and uninstall checks.
+
+## Repository
+
+- Independent platform release tags: `mac-v1.0.0` and `windows-v1.0.0`.
+- Shared sprites and logos; MIT source-code license with separate artwork scope.
+- English README and Korean documentation linked in both directions.
+
+Packages are not signed with an Apple Developer ID or Windows code-signing certificate.
+Mixed-DPI and visual behavior require manual Windows verification.

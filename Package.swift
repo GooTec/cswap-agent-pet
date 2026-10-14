@@ -11,20 +11,20 @@ let package = Package(
             name: "ChiikawaPet",
             path: ".",
             exclude: [
-                "build", "macos/Tests", "macos/Resources", "macos/README.md", "macos/README.ko.md",
+                "build", "mac/Tests", "mac/Resources", "mac/README.md", "mac/README.ko.md",
                 "windows", "scripts", "docs",
-                "README.md", "README.ko.md", "CHANGELOG.md", "LICENSE", "VERSION", "Launch.command",
+                "README.md", "README.ko.md", "CHANGELOG.md", "LICENSE", "mac/VERSION", "Launch.command",
                 "assets/NOTICE.md"
             ].filter {
                 FileManager.default.fileExists(atPath: URL(fileURLWithPath: #filePath)
                     .deletingLastPathComponent().appendingPathComponent($0).path)
             },
-            sources: ["macos/Sources/ChiikawaPet"],
+            sources: ["mac/Sources/ChiikawaPet"],
             resources: [.process("assets")]
         ),
         .testTarget(
             name: "ChiikawaPetTests", dependencies: ["ChiikawaPet"],
-            path: "macos/Tests/ChiikawaPetTests"
+            path: "mac/Tests/ChiikawaPetTests"
         )
     ]
 )

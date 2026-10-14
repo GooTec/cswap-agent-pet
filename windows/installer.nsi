@@ -53,7 +53,7 @@ FunctionEnd
 
 Section "Install"
   SetOutPath "$INSTDIR"
-  File /r "${PAYLOAD}/*"
+  File /r "${PAYLOAD}\*"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateDirectory "$SMPROGRAMS\Chiikawa Pet"
   CreateShortCut "$SMPROGRAMS\Chiikawa Pet\Chiikawa Pet.lnk" "$INSTDIR\ChiikawaPet.exe"

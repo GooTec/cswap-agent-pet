@@ -51,7 +51,7 @@ Windows 10/11용 C#·.NET 10·WPF 앱입니다. 공용 치이카와·하치와�
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-windows.ps1
 ```
 
-로직 검사 후 `build\windows\win-x64`에 앱을, `build\release\1.0.0`에 ZIP을 만듭니다.
+로직 검사 후 `build\windows\win-x64`에 앱을, `build\release\windows\1.0.0`에 ZIP을 만듭니다.
 ARM64 포터블 빌드는 `-Runtime win-arm64`를 추가하세요. x64 설치 프로그램은
 NSIS를 설치한 뒤 다음 명령으로 만듭니다.
 

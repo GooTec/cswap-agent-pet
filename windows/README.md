@@ -56,7 +56,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-windows.ps1
 ```
 
 The script runs logic checks and writes the app to `build\windows\win-x64` and
-the ZIP to `build\release\1.0.0`. Use `-Runtime win-arm64` for an ARM64 portable build.
+the ZIP to `build\release\windows\1.0.0`. Use `-Runtime win-arm64` for an ARM64 portable build.
 To create the x64 installer, install NSIS and run:
 
 ```powershell

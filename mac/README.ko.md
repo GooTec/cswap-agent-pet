@@ -7,7 +7,7 @@ Dock 아이콘 없이 메뉴바에서 제어합니다.
 
 ## 설치
 
-Apple Silicon은 `macos-arm64.dmg`, Intel은 `macos-x86_64.dmg`를 선택하세요.
+Apple Silicon은 `mac-arm64.dmg`, Intel은 `mac-x86_64.dmg`를 선택하세요.
 DMG를 열고 `ChiikawaPet.app`을 응용 프로그램 폴더로 옮긴 뒤 실행합니다.
 업데이트할 때는 실행 중인 펫을 먼저 종료한 뒤 앱을 교체하세요.
 
@@ -48,10 +48,10 @@ Xcode 또는 Command Line Tools로 Swift 6 이상을 설치한 뒤 저장소 루
 ```sh
 ./Launch.command
 ./scripts/test.sh
-./scripts/package-macos.sh arm64
+./scripts/package-mac.sh arm64
 ```
 
-Intel DMG는 `x86_64`를 지정합니다. 배포 파일은 `build/release/1.0.0/`에 생성됩니다.
+Intel DMG는 `x86_64`를 지정합니다. 배포 파일은 `build/release/mac/1.0.0/`에 생성됩니다.
 미리보기는 기존 앱을 종료한 뒤 실행하며 실제 사용량을 조회하지 않습니다.
 
 ```sh

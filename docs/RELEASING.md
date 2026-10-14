@@ -2,72 +2,63 @@
 
 [English](RELEASING.md) | [한국어](RELEASING.ko.md)
 
+mac and Windows have independent versions and GitHub Releases.
+
+| Platform | Version file | Tag | Workflow | Output |
+|---|---|---|---|---|
+| mac | `mac/VERSION` | `mac-v1.0.0` | [release-mac.yml](../.github/workflows/release-mac.yml) | `build/release/mac/1.0.0/` |
+| Windows | `windows/VERSION` | `windows-v1.0.0` | [release-windows.yml](../.github/workflows/release-windows.yml) | `build/release/windows/1.0.0/` |
+
 ## Versioning
 
-Update the root `VERSION` file using `MAJOR.MINOR.PATCH` and add release notes in
-`docs/releases/v<version>.md`. Update `CHANGELOG.md` and the package names shown
-in both README languages. The macOS build stamps this version into the app's
-Info.plist; the Windows project reads it for assembly and file versions.
-Use a Git tag named `v<version>` for the exact commit being released.
+Use `MAJOR.MINOR.PATCH` in the relevant platform's version file. Add a matching
+note in `docs/releases/<platform>-v<version>.md`, update `CHANGELOG.md`, and keep
+both README languages current. Release one OS without changing the other OS's version.
+The mac build stamps its version into Info.plist; the Windows project reads its
+version for assembly and file metadata.
 
-## Local packages
+## Packages
 
-Run from the repository root. macOS requires Swift 6+ and Apple's build tools.
-The Windows installer requires .NET 10 and NSIS.
+Run from the repository root. mac requires Swift 6+ and Apple build tools.
+Windows requires .NET 10 and NSIS. Package validation uses Python 3.11+.
 
 ```sh
 ./scripts/test.sh
-./scripts/package-macos.sh arm64
-./scripts/package-macos.sh x86_64
+./scripts/package-mac.sh arm64
+./scripts/package-mac.sh x86_64
+python3 scripts/check-release.py mac
 ```
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package-windows.ps1
+.\scripts\test-installed-windows.ps1 -Installer .\build\release\windows\1.0.0\ChiikawaPet-1.0.0-win-x64-setup.exe
+python scripts/check-release.py windows
 ```
 
-Outputs go to `build/release/<version>/`. The Windows script also builds a
-portable ZIP. Every package includes documentation, the source-code license,
-and a separate artwork notice. Native Windows installer and GUI checks run with:
+Each OS release has its own `SHA256SUMS`. Packages include both documentation
+languages, the MIT source-code license, and a separate artwork notice. Windows
+packages also include .NET's runtime licenses.
 
-```powershell
-.\scripts\test-installed-windows.ps1 -Installer .\build\release\1.0.0\ChiikawaPet-1.0.0-win-x64-setup.exe
-```
+## GitHub workflow
 
-Generate checksums and check all packages after collecting the builds:
+Manual runs build reviewable artifacts for one OS. Pushing a matching platform
+tag runs only that OS's checks and packaging, then creates its draft release.
+The tag's version must match its platform version file. Review the results and
+assets, then publish the draft.
 
 ```sh
-python3 scripts/check-release.py build/release/1.0.0
-```
-
-This validates package names, ZIP integrity, the Windows payload version and
-required files and runtime licenses, and the installer executable header. It writes `SHA256SUMS`.
-It does not substitute for manual Windows UI tests.
-
-## GitHub release workflow
-
-The [release workflow](../.github/workflows/release.yml) can be run manually to
-build reviewable artifacts. Pushing a `v*` tag builds Apple Silicon and Intel
-DMGs and Windows x64 packages, runs platform checks, and creates a **draft**
-release with the artifacts, checksums, and matching release notes.
-The tag must exactly match `VERSION`; a mismatch fails the build.
-
-Before pushing, confirm that the local commit, version, release notes, and
-artwork distribution permissions are the intended ones. This guide does not
-publish a release or change repository visibility by itself.
-
-```sh
-git tag -a v1.0.0 -m 'Chiikawa Agent Pet v1.0.0'
+git tag -a mac-v1.0.0 -m 'Chiikawa Agent Pet mac v1.0.0'
 git push origin main
-git push origin v1.0.0
+git push origin mac-v1.0.0
 ```
 
-Review the workflow results and attached assets, then publish the draft from
-GitHub Releases. Publishing exposes the release to anyone who can access the
-repository; a private repository's release remains private.
+```sh
+git tag -a windows-v1.0.0 -m 'Chiikawa Agent Pet Windows v1.0.0'
+git push origin main
+git push origin windows-v1.0.0
+```
 
-## Current limits
-
-- macOS apps are ad-hoc signed; Apple Developer ID signing and notarization are not configured.
-- Windows installers are not certificate-signed.
-- Windows CI checks installation, process startup in preview mode, and uninstall. Manually verify transparency, dragging, tray interactions, real account refresh, and mixed-DPI monitors before claiming full Windows support.
-- Source-code licensing excludes character images and provider logos. Include `ARTWORK-NOTICE.md` when distributing the packaged app.
+Private repository releases remain private. Current packages have no Apple
+Developer ID notarization or Windows signing certificate. Windows CI checks
+installation, preview startup, and uninstall; manually verify visual behavior,
+real account refresh, and mixed-DPI monitors.

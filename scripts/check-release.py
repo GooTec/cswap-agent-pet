@@ -9,12 +9,16 @@ import sys
 import zipfile
 
 root = Path(__file__).resolve().parent.parent
-version = (root / "VERSION").read_text().strip()
+if len(sys.argv) not in (2, 3) or sys.argv[1] not in ('mac', 'windows'):
+    raise SystemExit('Usage: check-release.py {mac|windows} [package-directory]')
+release_platform = sys.argv[1]
+version = (root / release_platform / "VERSION").read_text().strip()
 if not re.fullmatch(r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", version):
     raise SystemExit("VERSION must contain MAJOR.MINOR.PATCH")
-directory = Path(sys.argv[1]) if len(sys.argv) == 2 else root / "build/release" / version
-expected = [f"ChiikawaPet-{version}-macos-arm64.dmg", f"ChiikawaPet-{version}-macos-x86_64.dmg",
-            f"ChiikawaPet-{version}-win-x64-setup.exe", f"ChiikawaPet-{version}-win-x64.zip"]
+directory = Path(sys.argv[2]) if len(sys.argv) == 3 else root / "build/release" / release_platform / version
+expected = ([f"ChiikawaPet-{version}-mac-arm64.dmg", f"ChiikawaPet-{version}-mac-x86_64.dmg"]
+            if release_platform == 'mac' else
+            [f"ChiikawaPet-{version}-win-x64-setup.exe", f"ChiikawaPet-{version}-win-x64.zip"])
 for name in expected:
     path = directory / name
     if not path.is_file() or path.stat().st_size == 0:
@@ -57,4 +61,4 @@ for name in expected:
     with (directory / name).open("rb") as stream:
         checksums.append(f"{hashlib.file_digest(stream, 'sha256').hexdigest()}  {name}\n")
 (directory / "SHA256SUMS").write_text("".join(checksums))
-print(f"Verified {len(expected)} release packages for v{version}; wrote SHA256SUMS")
+print(f"Verified {len(expected)} {release_platform} packages for v{version}; wrote SHA256SUMS")

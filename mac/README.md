@@ -7,7 +7,7 @@ AppKit, and SwiftUI and runs from the menu bar without a Dock icon.
 
 ## Installation
 
-Choose the `macos-arm64.dmg` package for Apple Silicon or `macos-x86_64.dmg`
+Choose the `mac-arm64.dmg` package for Apple Silicon or `mac-x86_64.dmg`
 for Intel. Open the DMG, drag `ChiikawaPet.app` onto Applications, and launch it.
 Quit a running pet before replacing the app during an update.
 
@@ -52,10 +52,10 @@ Install Swift 6+ through Xcode or Command Line Tools, then run from the reposito
 ```sh
 ./Launch.command
 ./scripts/test.sh
-./scripts/package-macos.sh arm64
+./scripts/package-mac.sh arm64
 ```
 
-Use `x86_64` to build an Intel DMG. Packages go to `build/release/1.0.0/`.
+Use `x86_64` to build an Intel DMG. Packages go to `build/release/mac/1.0.0/`.
 Quit the running app before trying a preview, which performs no account requests:
 
 ```sh

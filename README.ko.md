@@ -21,12 +21,12 @@ macOS와 Windows에서 화면 위에 떠다니는 비공식 도트 펫입니다.
 ## 설치
 
 버전별 배포 파일은 [GitHub Releases](https://github.com/meengi07/chiikawa-agent-pet/releases)에서 확인합니다.
-첫 릴리즈는 `v1.0.0`이며, 릴리즈가 게시된 뒤 다운로드할 수 있습니다.
+mac과 Windows 릴리즈는 독립적으로 관리하며 각각 `1.0.0`으로 시작합니다. 해당 OS 릴리즈가 게시된 뒤 다운로드할 수 있습니다.
 
 | 플랫폼 | 배포 파일 | 설치 방법 |
 |---|---|---|
-| macOS 14 이상, Apple Silicon | `ChiikawaPet-1.0.0-macos-arm64.dmg` | DMG를 열고 앱을 응용 프로그램 폴더로 옮깁니다. |
-| macOS 14 이상, Intel | `ChiikawaPet-1.0.0-macos-x86_64.dmg` | DMG를 열고 앱을 응용 프로그램 폴더로 옮깁니다. |
+| macOS 14 이상, Apple Silicon | `ChiikawaPet-1.0.0-mac-arm64.dmg` | DMG를 열고 앱을 응용 프로그램 폴더로 옮깁니다. |
+| macOS 14 이상, Intel | `ChiikawaPet-1.0.0-mac-x86_64.dmg` | DMG를 열고 앱을 응용 프로그램 폴더로 옮깁니다. |
 | Windows 10/11, x64 | `ChiikawaPet-1.0.0-win-x64-setup.exe` | 설치 프로그램을 실행한 뒤 시작 메뉴에서 Chiikawa Pet을 엽니다. |
 | Windows 10/11, x64 | `ChiikawaPet-1.0.0-win-x64.zip` | **모든 파일을 압축 해제**한 뒤 `ChiikawaPet.exe`를 실행합니다. |
 
@@ -141,12 +141,12 @@ dotnet publish windows/ChiikawaPet.csproj -c Release -r win-x64 --self-contained
 ### 프로젝트 구조
 
 ```text
-macos/       Swift 소스·테스트·앱 정보
+mac/       Swift 소스·테스트·앱 정보
 windows/     C# 소스·로직 검사·설치 프로그램 정의
 assets/      공용 스프라이트와 서비스 로고
 scripts/     빌드·검사·패키징·릴리즈 검증
 docs/        릴리즈 안내와 변경 사항
-VERSION      공통 MAJOR.MINOR.PATCH 버전
+mac/VERSION · windows/VERSION  OS별 MAJOR.MINOR.PATCH 버전
 ```
 
 OS별 코드는 분리하고 두 앱 모두 `assets/`의 같은 PNG를 포함합니다.
@@ -166,9 +166,9 @@ open -n build/ChiikawaPet.app --args --preview 10 --show-usage
 
 ## 릴리즈와 버전 관리
 
-[VERSION](VERSION)을 기준으로 앱 버전과 배포 파일 이름을 맞춥니다.
+[mac/VERSION](mac/VERSION)과 [windows/VERSION](windows/VERSION)을 각각 기준으로 앱 버전과 배포 파일 이름을 맞춥니다.
 [릴리즈 안내](docs/RELEASING.ko.md)와 [변경 기록](CHANGELOG.md)을 확인하세요.
-`vMAJOR.MINOR.PATCH` 태그에 맞춰 자동화가 배포 파일을 빌드하고 GitHub Release **초안**을 만듭니다.
+`mac-vMAJOR.MINOR.PATCH`, `windows-vMAJOR.MINOR.PATCH` 태그에 맞춰 자동화가 배포 파일을 빌드하고 GitHub Release **초안**을 만듭니다.
 초안 게시 여부는 별도로 결정합니다.
 
 ## 개인정보와 알려진 제한 사항

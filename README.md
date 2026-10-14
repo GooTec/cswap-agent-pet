@@ -21,12 +21,12 @@ still experimental; see [known limitations](#privacy-and-known-limitations).
 ## Installation
 
 Find versioned packages on [GitHub Releases](https://github.com/meengi07/chiikawa-agent-pet/releases).
-The first release is `v1.0.0`; packages become downloadable when that release is published.
+Mac and Windows have independent releases, both starting at `1.0.0`. Packages become downloadable when their platform release is published.
 
 | Platform | Package | Installation |
 |---|---|---|
-| macOS 14+, Apple Silicon | `ChiikawaPet-1.0.0-macos-arm64.dmg` | Open the DMG and drag the app to Applications. |
-| macOS 14+, Intel | `ChiikawaPet-1.0.0-macos-x86_64.dmg` | Open the DMG and drag the app to Applications. |
+| macOS 14+, Apple Silicon | `ChiikawaPet-1.0.0-mac-arm64.dmg` | Open the DMG and drag the app to Applications. |
+| macOS 14+, Intel | `ChiikawaPet-1.0.0-mac-x86_64.dmg` | Open the DMG and drag the app to Applications. |
 | Windows 10/11, x64 | `ChiikawaPet-1.0.0-win-x64-setup.exe` | Run the installer, then open Chiikawa Pet from the Start menu. |
 | Windows 10/11, x64 | `ChiikawaPet-1.0.0-win-x64.zip` | Extract **all** files and run `ChiikawaPet.exe`. |
 
@@ -146,12 +146,12 @@ dotnet publish windows/ChiikawaPet.csproj -c Release -r win-x64 --self-contained
 ### Project structure
 
 ```text
-macos/       Swift sources, tests, and macOS app metadata
+mac/       Swift sources, tests, and macOS app metadata
 windows/     C# sources, logic checks, and installer definition
 assets/      Shared sprite sheets and provider logos
 scripts/     Build, test, packaging, and release checks
 docs/        Release guide and release notes
-VERSION      Shared MAJOR.MINOR.PATCH release version
+mac/VERSION · windows/VERSION  Independent MAJOR.MINOR.PATCH versions
 ```
 
 Platform code stays separate. Both applications embed the same PNG files from
@@ -172,10 +172,9 @@ open -n build/ChiikawaPet.app --args --preview 10 --show-usage
 
 ## Releases and versioning
 
-[VERSION](VERSION) is the source of truth for application versions and package
-filenames. See the [release guide](docs/RELEASING.md) and [changelog](CHANGELOG.md).
-Release automation builds the platform packages and creates a **draft** GitHub
-Release for matching `vMAJOR.MINOR.PATCH` tags. Publishing the draft is a separate step.
+[mac/VERSION](mac/VERSION) and [windows/VERSION](windows/VERSION) independently control application versions and package filenames. See the [release guide](docs/RELEASING.md) and [changelog](CHANGELOG.md).
+Each platform workflow builds its own packages and creates a **draft** GitHub
+Release for matching `mac-vMAJOR.MINOR.PATCH` or `windows-vMAJOR.MINOR.PATCH` tags. Publishing the draft is a separate step.
 
 ## Privacy and known limitations
 
