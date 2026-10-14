@@ -3,7 +3,7 @@
 [English](README.md) | [한국어](README.ko.md)
 
 An unofficial pixel-art desktop companion for macOS and Windows. Choose Chiikawa,
-Hachiware, or Usagi and check your remaining Claude and Codex subscription quotas.
+Hachiware, Usagi, or Momonga and check your remaining Claude and Codex subscription quotas.
 Your pet's expression changes with the lowest currently available quota.
 
 ## Preview
@@ -14,6 +14,13 @@ Your pet's expression changes with the lowest currently available quota.
 
 Real macOS UI captures using preview mode and simulated quotas. The app's
 captures show Korean mode; the displayed percentages are demo values.
+
+<details>
+<summary>Momonga and four-character selection</summary>
+
+<img src="docs/images/mac-momonga.png" width="320" alt="English mac UI showing Momonga with its complete tail and feet">
+
+</details>
 
 ## Features
 

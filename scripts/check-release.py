@@ -53,7 +53,7 @@ for name in expected:
             if f"ChiikawaPet/{version}" not in dependencies["libraries"]:
                 raise SystemExit("Windows app version does not match VERSION")
             assembly = archive.read("ChiikawaPet.dll")
-            for sprite in ("chiikawa", "hachiware", "usagi", "claude-logo", "codex-logo"):
+            for sprite in ("chiikawa", "hachiware", "usagi", "momonga", "claude-logo", "codex-logo"):
                 if f"sprites/{sprite}.png".encode("utf-16le") not in assembly:
                     raise SystemExit(f"Missing embedded PNG: {sprite}")
 checksums = []

@@ -31,7 +31,8 @@ class PixelPetView: NSView {
     private var animationFrame = 0
     private static let spriteSize = CGSize(width: 64, height: 80)
     private static let shadow = CGColor(srgbRed: 0.39, green: 0.30, blue: 0.31, alpha: 0.12)
-    private static let frames: [PetCharacter: [CGImage]] = loadFrames()
+    private static let momongaRowEdges = [0, 400, 700, 1024]
+    static let frames: [PetCharacter: [CGImage]] = loadFrames()
     private static let menuBarImages: [PetCharacter: [NSImage]] = loadMenuBarImages()
 
     static func menuBarImage(character: PetCharacter, mood: PetMood) -> NSImage {
@@ -57,6 +58,7 @@ class PixelPetView: NSView {
             case .chiikawa: face = CGRect(x: 8, y: 16, width: 48, height: 40)
             case .hachiware: face = CGRect(x: 8, y: 11, width: 48, height: 45)
             case .usagi: face = CGRect(x: 8, y: 2, width: 48, height: 54)
+            case .momonga: face = CGRect(x: 0, y: 0, width: 64, height: 80)
             }
             var characterIcons: [NSImage] = []
             for row in 0..<6 {
@@ -96,16 +98,65 @@ class PixelPetView: NSView {
             guard let url = Bundle.module.url(forResource: character.rawValue, withExtension: "png"),
                   let source = CGImageSourceCreateWithURL(url as CFURL, nil),
                   let atlas = CGImageSourceCreateImageAtIndex(source, 0, nil),
-                  atlas.width == 512, atlas.height == 480 else {
+                  atlas.width >= 512, atlas.height >= 480,
+                  character != .momonga || (atlas.width == 1536 && atlas.height == 1024) else {
                 fatalError("Missing or invalid bundled sprite: \(character.rawValue)")
             }
             var characterFrames: [CGImage] = []
             characterFrames.reserveCapacity(48)
             for row in 0..<6 {
                 for column in 0..<8 {
-                    let rectangle = CGRect(x: column * 64, y: row * 80, width: 64, height: 80)
-                    guard let frame = atlas.cropping(to: rectangle) else {
+                    // Momonga uses one open/blinking pair per mood; idle motion is drawn below.
+                    let index = row * 2 + (column >= 6 ? 1 : 0)
+                    let columns = character == .momonga ? 4 : 8
+                    let rows = character == .momonga ? 3 : 6
+                    let sourceColumn = character == .momonga ? index % 4 : column
+                    let sourceRow = character == .momonga ? index / 4 : row
+                    let x = sourceColumn * atlas.width / columns
+                    let y = character == .momonga ? momongaRowEdges[sourceRow] : sourceRow * atlas.height / rows
+                    let rectangle = CGRect(x: x, y: y,
+                        width: (sourceColumn + 1) * atlas.width / columns - x,
+                        height: (character == .momonga ? momongaRowEdges[sourceRow + 1]
+                            : (sourceRow + 1) * atlas.height / rows) - y)
+                    guard var frame = atlas.cropping(to: rectangle) else {
                         fatalError("Invalid sprite frame: \(character.rawValue)")
+                    }
+                    if character == .momonga {
+                        // Trim transparent padding only, retaining the complete tail and outline.
+                        guard let pixels = CGContext(data: nil, width: frame.width, height: frame.height,
+                            bitsPerComponent: 8, bytesPerRow: frame.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue), let data = pixels.data else {
+                            fatalError("Unable to read Momonga sprite")
+                        }
+                        pixels.draw(frame, in: CGRect(x: 0, y: 0, width: frame.width, height: frame.height))
+                        let bytes = data.assumingMemoryBound(to: UInt8.self)
+                        var left = frame.width, top = frame.height, right = -1, bottom = -1
+                        for y in 0..<frame.height {
+                            for x in 0..<frame.width where bytes[(y * frame.width + x) * 4 + 3] > 1 {
+                                left = min(left, x); right = max(right, x)
+                                top = min(top, y); bottom = max(bottom, y)
+                            }
+                        }
+                        guard right >= left, bottom >= top,
+                              let trimmed = frame.cropping(to: CGRect(x: left, y: top,
+                                width: right - left + 1, height: bottom - top + 1)) else {
+                            fatalError("Empty Momonga sprite")
+                        }
+                        frame = trimmed
+                        guard let context = CGContext(data: nil, width: 64, height: 80, bitsPerComponent: 8,
+                            bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+                            fatalError("Unable to normalize Momonga sprite")
+                        }
+                        let scale = min(60 / CGFloat(frame.width), 76 / CGFloat(frame.height))
+                        let width = CGFloat(frame.width) * scale, height = CGFloat(frame.height) * scale
+                        context.interpolationQuality = .none
+                        context.draw(frame, in: CGRect(x: (64 - width) / 2, y: 4,
+                            width: width, height: height))
+                        guard let normalized = context.makeImage() else {
+                            fatalError("Unable to normalize Momonga sprite")
+                        }
+                        frame = normalized
                     }
                     characterFrames.append(frame)
                 }

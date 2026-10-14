@@ -82,6 +82,7 @@ enum EnglishText {
         ("펫 종류", "Character"),
         ("새로고침", "Refresh"),
         ("우사기", "Usagi"),
+        ("모몽가", "Momonga"),
         ("5시간", "5 hours"),
         ("종료", "Quit"),
         ("닫기", "Close"),

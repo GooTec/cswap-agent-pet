@@ -3,7 +3,7 @@
 [English](README.md) | [한국어](README.ko.md)
 
 A Windows 10/11 desktop pet built with C#, .NET 10, and WPF, using the shared
-Chiikawa, Hachiware, and Usagi sprites.
+Chiikawa, Hachiware, Usagi, and Momonga sprites.
 
 ## Installation
 

@@ -42,7 +42,7 @@ struct UsagePanel: View {
                 }
             }
             .pickerStyle(.segmented)
-            HStack(spacing: 8) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                 ForEach(PetCharacter.allCases) { character in
                     CharacterCard(
                         character: character,

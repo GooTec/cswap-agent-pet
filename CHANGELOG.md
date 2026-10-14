@@ -5,6 +5,8 @@ and [windows/VERSION](windows/VERSION).
 
 ## Unreleased
 
+- Add Momonga with six expressions, blink animation, saved selection, and English/Korean names on both platforms.
+
 - Add English (default) and Korean UI modes on mac and Windows, with saved language selection.
 
 ## mac 1.0.0 — 2026-10-14

@@ -3,7 +3,7 @@
 [English](README.md) | [한국어](README.ko.md)
 
 macOS와 Windows에서 화면 위에 떠다니는 비공식 도트 펫입니다.
-치이카와·하치와레·우사기를 선택하고 Claude·Codex 구독 잔여량을 확인하세요.
+치이카와·하치와레·우사기·모몽가를 선택하고 Claude·Codex 구독 잔여량을 확인하세요.
 펫의 표정은 정상 조회된 한도 중 가장 낮은 잔여량에 따라 바뀝니다.
 
 ## 화면 미리보기
@@ -14,6 +14,13 @@ macOS와 Windows에서 화면 위에 떠다니는 비공식 도트 펫입니다.
 
 미리보기 모드에서 촬영한 실제 mac 앱 화면입니다. 표시된 퍼센트는
 예시 데이터이며 실제 계정 사용량이 아닙니다.
+
+<details>
+<summary>모몽가와 네 캐릭터 선택</summary>
+
+<img src="docs/images/mac-momonga.png" width="320" alt="꼬리와 발 전체가 보이는 모몽가와 네 캐릭터 선택 화면">
+
+</details>
 
 ## 주요 기능
 

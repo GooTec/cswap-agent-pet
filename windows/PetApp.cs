@@ -24,7 +24,8 @@ namespace ChiikawaPet;
 internal sealed class PetApp : Window
 {
     private static readonly (string Id, string Name)[] Characters =
-        [("chiikawa", "치이카와"), ("hachiware", "하치와레"), ("usagi", "우사기")];
+        [("chiikawa", "치이카와"), ("hachiware", "하치와레"), ("usagi", "우사기"), ("momonga", "모몽가")];
+    private static readonly int[] MomongaRowEdges = [0, 400, 700, 1024];
     private static readonly string SettingsPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ChiikawaPet", "settings.json");
     private readonly Settings settings;
@@ -182,13 +183,50 @@ internal sealed class PetApp : Window
         foreach (var (id, _) in Characters)
         {
             var sheet = new BitmapImage(new Uri($"pack://application:,,,/Sprites/{id}.png"));
-            if (sheet.PixelWidth != 512 || sheet.PixelHeight != 480)
+            if (sheet.PixelWidth < 512 || sheet.PixelHeight < 480
+                || (id == "momonga" && (sheet.PixelWidth != 1536 || sheet.PixelHeight != 1024)))
                 throw new IOException("Invalid sprite sheet");
             var frames = new BitmapSource[48];
             for (int row = 0; row < 6; row++)
                 for (int column = 0; column < 8; column++)
                 {
-                    var bitmap = new CroppedBitmap(sheet, new Int32Rect(column * 64, row * 80, 64, 80));
+                    // Momonga uses one open/blinking pair per mood; idle motion stays in DrawPet.
+                    int index = row * 2 + (column >= 6 ? 1 : 0);
+                    int columns = id == "momonga" ? 4 : 8, rows = id == "momonga" ? 3 : 6;
+                    int sourceColumn = id == "momonga" ? index % 4 : column;
+                    int sourceRow = id == "momonga" ? index / 4 : row;
+                    int x = sourceColumn * sheet.PixelWidth / columns;
+                    int y = id == "momonga" ? MomongaRowEdges[sourceRow] : sourceRow * sheet.PixelHeight / rows;
+                    BitmapSource bitmap = new CroppedBitmap(sheet, new Int32Rect(x, y,
+                        (sourceColumn + 1) * sheet.PixelWidth / columns - x,
+                        (id == "momonga" ? MomongaRowEdges[sourceRow + 1] : (sourceRow + 1) * sheet.PixelHeight / rows) - y));
+                    if (id == "momonga")
+                    {
+                        // Trim transparent padding, keeping the complete tail and outline.
+                        bitmap = new FormatConvertedBitmap(bitmap, PixelFormats.Pbgra32, null, 0);
+                        int stride = bitmap.PixelWidth * 4;
+                        var pixels = new byte[stride * bitmap.PixelHeight];
+                        bitmap.CopyPixels(pixels, stride, 0);
+                        int left = bitmap.PixelWidth, top = bitmap.PixelHeight, right = -1, bottom = -1;
+                        for (int py = 0; py < bitmap.PixelHeight; py++)
+                            for (int px = 0; px < bitmap.PixelWidth; px++)
+                                if (pixels[py * stride + px * 4 + 3] > 1)
+                                {
+                                    left = Math.Min(left, px); right = Math.Max(right, px);
+                                    top = Math.Min(top, py); bottom = Math.Max(bottom, py);
+                                }
+                        if (right < left || bottom < top) throw new IOException("Empty Momonga sprite");
+                        bitmap = new CroppedBitmap(bitmap, new Int32Rect(left, top, right - left + 1, bottom - top + 1));
+                        var visual = new DrawingVisual();
+                        RenderOptions.SetBitmapScalingMode(visual, BitmapScalingMode.NearestNeighbor);
+                        double scale = Math.Min(60.0 / bitmap.PixelWidth, 76.0 / bitmap.PixelHeight);
+                        double width = bitmap.PixelWidth * scale, height = bitmap.PixelHeight * scale;
+                        using (var drawing = visual.RenderOpen())
+                            drawing.DrawImage(bitmap, new Rect((64 - width) / 2, 76 - height, width, height));
+                        var normalized = new RenderTargetBitmap(64, 80, 96, 96, PixelFormats.Pbgra32);
+                        normalized.Render(visual);
+                        bitmap = normalized;
+                    }
                     bitmap.Freeze();
                     frames[row * 8 + column] = bitmap;
                 }
@@ -419,7 +457,7 @@ internal sealed class PetApp : Window
         body.Children.Add(Text("CHIIKAWA PET", 11));
         caption = Text(T($"{CharacterName}의 에너지 · {Usage.Caption(Remaining)}"), 20);
         body.Children.Add(caption);
-        var choices = new UniformGrid { Columns = 3 };
+        var choices = new UniformGrid { Columns = 2 };
         foreach (var (id, name) in Characters)
         {
             var content = new StackPanel();

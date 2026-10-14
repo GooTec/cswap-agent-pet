@@ -74,10 +74,10 @@ var settingsPath = Path.Combine(temp, "settings.json");
 try
 {
     Check(Settings.Load(settingsPath).Scale == 0.65, "Default size");
-    var settings = new Settings { Character = "usagi", Scale = 1.2, Visible = false, Wanders = false, X = -200, Y = 40 };
+    var settings = new Settings { Character = "momonga", Scale = 1.2, Visible = false, Wanders = false, X = -200, Y = 40 };
     settings.Save(settingsPath);
     var restored = Settings.Load(settingsPath);
-    Check(restored.Character == "usagi" && restored.Scale == 1.2 && !restored.Visible && !restored.Wanders
+    Check(restored.Character == "momonga" && restored.Scale == 1.2 && !restored.Visible && !restored.Wanders
         && restored.X == -200 && restored.Y == 40, "Preferences round trip / negative monitor coordinates");
     settings.Character = "invalid";
     settings.Scale = double.NaN;

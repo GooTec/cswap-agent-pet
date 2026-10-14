@@ -17,7 +17,7 @@ internal sealed class Settings
     public void Validate()
     {
         if (Language is not ("en" or "ko")) Language = "en";
-        if (Character is not ("chiikawa" or "hachiware" or "usagi")) Character = "chiikawa";
+        if (Character is not ("chiikawa" or "hachiware" or "usagi" or "momonga")) Character = "chiikawa";
         if (!double.IsFinite(Scale) || Scale < 0.4 || Scale > 1.2) Scale = 0.65;
         if (X is double x && !double.IsFinite(x)) X = null;
         if (Y is double y && !double.IsFinite(y)) Y = null;
