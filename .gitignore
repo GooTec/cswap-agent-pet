@@ -2,5 +2,5 @@
 build/
 .DS_Store
 .swiftpm/
-Windows/**/bin/
-Windows/**/obj/
+windows/**/bin/
+windows/**/obj/

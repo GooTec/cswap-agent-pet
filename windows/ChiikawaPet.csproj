@@ -12,6 +12,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Checks/**/*.cs" />
-    <Resource Include="../Sources/ChiikawaPet/Resources/*.png" Link="Sprites/%(Filename)%(Extension)" />
+    <Resource Include="../assets/*.png" Link="Sprites/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

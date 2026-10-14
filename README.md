@@ -2,9 +2,27 @@
 
 macOS 화면 위에 떠다니는 비공식 치이카와·하치와레·우사기 도트 펫. 클릭하면 Claude·Codex 구독 사용량의 **잔여 퍼센트**를 확인합니다. Swift/AppKit/SwiftUI만 사용하며 외부 패키지 의존성이 없습니다.
 
-**Windows 10/11 버전:** 기존 도트 리소스를 사용하는 C# / WPF 앱도 포함합니다. 포터블 실행과 빌드는 [Windows 안내](Windows/README.md)를 확인하세요.
+**Windows 10/11 버전:** 기존 도트 리소스를 사용하는 C# / WPF 앱도 포함합니다. 포터블 실행과 빌드는 [Windows 안내](windows/README.md)를 확인하세요.
 
-## 실행
+## 소스 구조
+
+```text
+macos/
+  Sources/ChiikawaPet/        Swift · AppKit · SwiftUI, 메뉴바와 펫 창
+  Tests/ChiikawaPetTests/     macOS 테스트
+  Resources/Info.plist        macOS 앱 정보
+windows/
+  PetApp.cs                  C# · WPF, 트레이와 펫 창
+  Usage.cs · Settings.cs      Windows 사용량 조회와 설정
+  Checks/                    Windows 로직 검사
+assets/                      두 앱이 함께 사용하는 PNG 스프라이트와 로고
+scripts/                     OS별 빌드와 검사
+Package.swift                macOS 빌드 설정
+```
+
+앱 코드와 인증·설정 처리는 OS별로 구현합니다. 공용 이미지는 `assets/` 한 곳에서 관리하고 Swift Package와 Windows 프로젝트가 각각 앱에 포함합니다. 빌드 명령은 저장소 루트에서 실행하세요.
+
+## macOS 실행
 
 macOS 14 이상과 Swift 6 이상이 필요합니다. 개발 도구가 없으면 `xcode-select --install`로 설치하세요.
 

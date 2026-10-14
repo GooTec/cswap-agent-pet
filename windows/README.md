@@ -41,8 +41,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-windows.ps1
 Mac/Linux에서도 [.NET Windows 타기팅](https://learn.microsoft.com/en-us/dotnet/core/tools/sdk-errors/netsdk1100)으로 컴파일할 수 있습니다.
 
 ```sh
-dotnet run --project Windows/Checks/Checks.csproj -c Release
-dotnet publish Windows/ChiikawaPet.csproj -c Release -r win-x64 --self-contained true -o build/windows/win-x64
+dotnet run --project windows/Checks/Checks.csproj -c Release
+dotnet publish windows/ChiikawaPet.csproj -c Release -r win-x64 --self-contained true -o build/windows/win-x64
 ```
 
 UI와 트레이 동작은 Windows에서 확인해야 합니다. 로직 검증은 네트워크나 실제 로그인 없이 사용량 응답, 표정 경계, 오류 후 복구, 인증 유효성, 설정 저장을 확인합니다.
