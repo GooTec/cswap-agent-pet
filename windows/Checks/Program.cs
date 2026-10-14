@@ -88,4 +88,22 @@ try
     Check(Settings.Load(settingsPath).Scale == 0.65 && !File.Exists(settingsPath + ".tmp"), "Atomic overwrite completes");
 }
 finally { if (Directory.Exists(temp)) Directory.Delete(temp, recursive: true); }
+Check(new Settings().Language == "en", "English is default");
+var languageSettings = new Settings { Language = "invalid" };
+languageSettings.Validate();
+Check(languageSettings.Language == "en", "Invalid language defaults to English");
+Language.Current = "en";
+Check(Language.T("펫 크기") == "Pet size", "English label");
+Check(Language.T("하치와레의 에너지 · 오늘도 같이 힘내자") == "Hachiware’s energy · Let’s do our best today", "Composite label");
+Check(Language.T("사용량 서버 오류 (HTTP 429). 나중에 새로고침하세요.") == "Usage server error (HTTP 429). Refresh later.", "Dynamic error");
+Check(Language.T("2일 한도") == "2-day limit", "Dynamic quota");
+Language.Current = "ko";
+Check(Language.T("펫 크기") == "펫 크기", "Korean label");
+Check(Language.T("5시간") == "5시간", "Korean quota");
+var languagePath = Path.Combine(Path.GetTempPath(), "chiikawa-language-" + Guid.NewGuid(), "settings.json");
+try {
+    new Settings { Language = "ko" }.Save(languagePath);
+    Check(Settings.Load(languagePath).Language == "ko", "Language persists after restart");
+} finally { Directory.Delete(Path.GetDirectoryName(languagePath)!, recursive: true); }
+Language.Current = "en";
 Console.WriteLine($"Windows logic checks passed: {checks}");

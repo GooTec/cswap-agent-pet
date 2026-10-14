@@ -15,6 +15,9 @@ final class UsageStore: ObservableObject {
         ProviderDisplay(provider: $0)
     }
     @Published private(set) var isRefreshing = false
+    @Published var language: AppLanguage {
+        didSet { preferences.set(language.rawValue, forKey: "appLanguage") }
+    }
     @Published var wanders: Bool {
         didSet { preferences.set(wanders, forKey: "wanders") }
     }
@@ -33,6 +36,7 @@ final class UsageStore: ObservableObject {
         self.usageFetching = usageFetching
         self.previewPercent = previewPercent
         self.preferences = preferences
+        language = AppLanguage(rawValue: preferences.string(forKey: "appLanguage") ?? "en") ?? .english
         wanders = preferences.object(forKey: "wanders") as? Bool ?? true
         let savedCharacter = preferences.string(forKey: "petCharacter") ?? ""
         selectedCharacter = PetCharacter(rawValue: savedCharacter) ?? .chiikawa

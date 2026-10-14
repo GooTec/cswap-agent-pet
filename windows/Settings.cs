@@ -6,6 +6,7 @@ namespace ChiikawaPet;
 
 internal sealed class Settings
 {
+    public string Language { get; set; } = "en";
     public string Character { get; set; } = "chiikawa";
     public double Scale { get; set; } = 0.65;
     public bool Visible { get; set; } = true;
@@ -15,6 +16,7 @@ internal sealed class Settings
 
     public void Validate()
     {
+        if (Language is not ("en" or "ko")) Language = "en";
         if (Character is not ("chiikawa" or "hachiware" or "usagi")) Character = "chiikawa";
         if (!double.IsFinite(Scale) || Scale < 0.4 || Scale > 1.2) Scale = 0.65;
         if (X is double x && !double.IsFinite(x)) X = null;

@@ -15,6 +15,11 @@ The current app is ad-hoc signed and has no Apple Developer ID notarization.
 If macOS blocks it, review the source and release checksum, then use System
 Settings → Privacy & Security → Open Anyway if you want to run that download.
 
+## Language
+
+English is the default. Choose English or 한국어 in the usage panel or control menu.
+The choice is applied immediately and saved for the next launch.
+
 ## Controls
 
 - Click the pet to toggle its usage panel; drag it to move it.

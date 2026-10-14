@@ -15,6 +15,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using static ChiikawaPet.Language;
 using Forms = System.Windows.Forms;
 using Drawing = System.Drawing;
 
@@ -44,7 +45,7 @@ internal sealed class PetApp : Window
     private int frame, direction = -1, trayRow = -1;
     private string trayCharacter = "";
     private double? Remaining => preview ?? Usage.Minimum(providers);
-    private string CharacterName => Characters.First(character => character.Id == settings.Character).Name;
+    private string CharacterName => T(Characters.First(character => character.Id == settings.Character).Name);
 
     [STAThread]
     public static void Main(string[] arguments)
@@ -58,11 +59,11 @@ internal sealed class PetApp : Window
                 && double.TryParse(arguments[++index], NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
                 && double.IsFinite(value) && value >= 0 && value <= 100)
             { preview = value; continue; }
-            MessageBox.Show("실행 옵션: --preview 0~100 [--show-usage]", "치이카와 펫");
+            MessageBox.Show(T("실행 옵션: --preview 0~100 [--show-usage]"), T("치이카와 펫"));
             return;
         }
         using var instance = new Mutex(true, "Local\\ChiikawaAgentPet", out bool created);
-        if (!created) { MessageBox.Show("이미 실행 중입니다. 알림 영역의 펫 아이콘을 클릭하세요.", "치이카와 펫"); return; }
+        if (!created) { MessageBox.Show(T("이미 실행 중입니다. 알림 영역의 펫 아이콘을 클릭하세요."), T("치이카와 펫")); return; }
         try
         {
             var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
@@ -74,14 +75,14 @@ internal sealed class PetApp : Window
             app.DispatcherUnhandledException += (_, error) =>
             {
                 // Show a bounded message: exception details may contain local account information.
-                MessageBox.Show("앱 실행 중 오류가 발생했습니다. 펫을 다시 실행하세요.", "치이카와 펫");
+                MessageBox.Show(T("앱 실행 중 오류가 발생했습니다. 펫을 다시 실행하세요."), T("치이카와 펫"));
                 error.Handled = true;
                 window.Quit();
             };
             app.Run();
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException)
-        { MessageBox.Show("펫 리소스 또는 설정을 읽을 수 없습니다. 실행 파일을 다시 압축 해제하고 설정 파일을 확인하세요.", "치이카와 펫"); }
+        { MessageBox.Show(T("펫 리소스 또는 설정을 읽을 수 없습니다. 실행 파일을 다시 압축 해제하고 설정 파일을 확인하세요."), T("치이카와 펫")); }
         finally { instance.ReleaseMutex(); }
     }
 
@@ -89,7 +90,8 @@ internal sealed class PetApp : Window
     {
         this.preview = preview;
         settings = Settings.Load(SettingsPath);
-        Title = "치이카와 펫";
+        ChiikawaPet.Language.Current = settings.Language;
+        Title = T("치이카와 펫");
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
         AllowsTransparency = true;
@@ -106,7 +108,7 @@ internal sealed class PetApp : Window
         var petButton = new Button
         {
             Content = pet, Background = Brushes.Transparent, BorderThickness = new Thickness(0),
-            Padding = new Thickness(0), ToolTip = "클릭: 사용량 · 드래그: 이동 · 우클릭: 메뉴"
+            Padding = new Thickness(0), ToolTip = T("클릭: 사용량 · 드래그: 이동 · 우클릭: 메뉴")
         };
         // The default button template adds hover shading; keep native button keyboard/automation behavior.
         var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
@@ -242,7 +244,7 @@ internal sealed class PetApp : Window
         if (preview != null) return;
         try { settings.Save(SettingsPath); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-        { MessageBox.Show("펫 설정을 저장할 수 없습니다. %LOCALAPPDATA%\\ChiikawaPet 폴더의 쓰기 권한을 확인하세요.", "치이카와 펫"); }
+        { MessageBox.Show(T("펫 설정을 저장할 수 없습니다. %LOCALAPPDATA%\\ChiikawaPet 폴더의 쓰기 권한을 확인하세요."), T("치이카와 펫")); }
     }
 
     private async Task Refresh()
@@ -264,8 +266,9 @@ internal sealed class PetApp : Window
 
     private void UpdatePresentation()
     {
-        Title = $"{CharacterName} 펫";
-        AutomationProperties.SetName((Button)Content, $"{CharacterName}, 잔여량 {Usage.Percent(Remaining)}. {Usage.Caption(Remaining)}");
+        ((Button)Content).ToolTip = T("클릭: 사용량 · 드래그: 이동 · 우클릭: 메뉴");
+        Title = T($"{CharacterName} 펫");
+        AutomationProperties.SetName((Button)Content, T($"{CharacterName}, 잔여량 {Usage.Percent(Remaining)}. {Usage.Caption(Remaining)}"));
         DrawPet();
         if (settings.Visible) animation.Start(); else animation.Stop();
         tray.Text = $"{CharacterName} · Claude {Usage.Percent(providers[0].Remaining)} · Codex {Usage.Percent(providers[1].Remaining)}";
@@ -293,6 +296,20 @@ internal sealed class PetApp : Window
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DestroyIcon(IntPtr handle);
+
+    private void SelectLanguage(string code)
+    {
+        settings.Language = code;
+        ChiikawaPet.Language.Current = code;
+        SaveSettings();
+        bool wasOpen = panel != null;
+        ClosePanel();
+        var previousMenu = tray.ContextMenuStrip;
+        BuildTrayMenu();
+        previousMenu?.Dispose();
+        UpdatePresentation();
+        if (wasOpen) TogglePanel();
+    }
 
     private void SelectCharacter(string id)
     {
@@ -335,21 +352,29 @@ internal sealed class PetApp : Window
     private void BuildTrayMenu()
     {
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("사용량 보기", null, (_, _) => Dispatcher.Invoke(TogglePanel));
-        var characters = new Forms.ToolStripMenuItem("펫 종류");
+        menu.Items.Add(T("사용량 보기"), null, (_, _) => Dispatcher.Invoke(TogglePanel));
+        var characters = new Forms.ToolStripMenuItem(T("펫 종류"));
         foreach (var (id, name) in Characters)
-            characters.DropDownItems.Add(name, null, (_, _) => Dispatcher.Invoke(() => SelectCharacter(id)));
+            characters.DropDownItems.Add(T(name), null, (_, _) => Dispatcher.Invoke(() => SelectCharacter(id)));
         menu.Items.Add(characters);
-        var visible = new Forms.ToolStripMenuItem("화면에 펫 표시");
+        var languages = new Forms.ToolStripMenuItem("Language / 언어");
+        foreach (var (code, label) in new[] { ("en", "English"), ("ko", "한국어") })
+        {
+            var item = new Forms.ToolStripMenuItem(label) { Checked = settings.Language == code };
+            item.Click += (_, _) => Dispatcher.Invoke(() => SelectLanguage(code));
+            languages.DropDownItems.Add(item);
+        }
+        menu.Items.Add(languages);
+        var visible = new Forms.ToolStripMenuItem(T("화면에 펫 표시"));
         visible.Click += (_, _) => Dispatcher.Invoke(() => SetVisible(!settings.Visible));
         menu.Items.Add(visible);
-        var wander = new Forms.ToolStripMenuItem("느긋하게 산책하기");
+        var wander = new Forms.ToolStripMenuItem(T("느긋하게 산책하기"));
         wander.Click += (_, _) => Dispatcher.Invoke(() => { settings.Wanders = !settings.Wanders; SaveSettings(); });
         menu.Items.Add(wander);
-        menu.Items.Add("화면 가운데로 데려오기", null, (_, _) => Dispatcher.Invoke(CenterPet));
-        menu.Items.Add("새로고침", null, (_, _) => Dispatcher.InvokeAsync(Refresh));
+        menu.Items.Add(T("화면 가운데로 데려오기"), null, (_, _) => Dispatcher.Invoke(CenterPet));
+        menu.Items.Add(T("새로고침"), null, (_, _) => Dispatcher.InvokeAsync(Refresh));
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("펫 종료", null, (_, _) => Dispatcher.Invoke(Quit));
+        menu.Items.Add(T("펫 종료"), null, (_, _) => Dispatcher.Invoke(Quit));
         menu.Opening += (_, _) => { visible.Checked = settings.Visible; wander.Checked = settings.Wanders; };
         tray.ContextMenuStrip = menu;
     }
@@ -363,23 +388,25 @@ internal sealed class PetApp : Window
             item.Click += (_, _) => action();
             menu.Items.Add(item);
         }
-        Add("사용량 보기", TogglePanel);
-        foreach (var (id, name) in Characters) Add(name, () => SelectCharacter(id), settings.Character == id);
+        Add(T("사용량 보기"), TogglePanel);
+        Add("English", () => SelectLanguage("en"), settings.Language == "en");
+        Add("한국어", () => SelectLanguage("ko"), settings.Language == "ko");
+        foreach (var (id, name) in Characters) Add(T(name), () => SelectCharacter(id), settings.Character == id);
         menu.Items.Add(new Separator());
-        Add("화면에 펫 표시", () => SetVisible(!settings.Visible), settings.Visible);
-        Add("느긋하게 산책하기", () => { settings.Wanders = !settings.Wanders; SaveSettings(); }, settings.Wanders);
-        Add("화면 가운데로 데려오기", CenterPet);
-        Add("새로고침", async () => await Refresh());
-        Add("펫 종료", Quit);
+        Add(T("화면에 펫 표시"), () => SetVisible(!settings.Visible), settings.Visible);
+        Add(T("느긋하게 산책하기"), () => { settings.Wanders = !settings.Wanders; SaveSettings(); }, settings.Wanders);
+        Add(T("화면 가운데로 데려오기"), CenterPet);
+        Add(T("새로고침"), async () => await Refresh());
+        Add(T("펫 종료"), Quit);
         return menu;
     }
 
     private static TextBlock Text(string text, double size = 12) => new()
-    { Text = text, FontSize = size, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 3) };
+    { Text = T(text), FontSize = size, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 3) };
 
     private static Button ActionButton(string title, Action action)
     {
-        var button = new Button { Content = title, Padding = new Thickness(10, 7, 10, 7), Margin = new Thickness(3) };
+        var button = new Button { Content = T(title), Padding = new Thickness(10, 7, 10, 7), Margin = new Thickness(3) };
         button.Click += (_, _) => action();
         return button;
     }
@@ -390,7 +417,7 @@ internal sealed class PetApp : Window
         var screen = WorkArea();
         var body = new StackPanel { Margin = new Thickness(20) };
         body.Children.Add(Text("CHIIKAWA PET", 11));
-        caption = Text($"{CharacterName}의 에너지 · {Usage.Caption(Remaining)}", 20);
+        caption = Text(T($"{CharacterName}의 에너지 · {Usage.Caption(Remaining)}"), 20);
         body.Children.Add(caption);
         var choices = new UniformGrid { Columns = 3 };
         foreach (var (id, name) in Characters)
@@ -402,35 +429,40 @@ internal sealed class PetApp : Window
             content.Children.Add(Text(name));
             var choice = ActionButton(name, () => SelectCharacter(id));
             choice.Content = content;
-            AutomationProperties.SetName(choice, $"{name} 선택");
+            AutomationProperties.SetName(choice, T($"{name} 선택"));
             choices.Children.Add(choice);
         }
         body.Children.Add(choices);
-        var sizeLabel = Text($"펫 크기 {Math.Round(settings.Scale * 100)}%");
+        var languageChoices = new StackPanel { Orientation = Orientation.Horizontal };
+        languageChoices.Children.Add(ActionButton("English", () => SelectLanguage("en")));
+        languageChoices.Children.Add(ActionButton("한국어", () => SelectLanguage("ko")));
+        body.Children.Add(Text("Language / 언어"));
+        body.Children.Add(languageChoices);
+        var sizeLabel = Text(T($"펫 크기 {Math.Round(settings.Scale * 100)}%"));
         body.Children.Add(sizeLabel);
         var slider = new Slider { Minimum = 0.4, Maximum = 1.2, Value = settings.Scale, TickFrequency = 0.05,
             IsSnapToTickEnabled = true, Margin = new Thickness(5, 8, 5, 8) };
-        AutomationProperties.SetName(slider, "펫 크기");
-        slider.ValueChanged += (_, _) => { SetScale(slider.Value); sizeLabel.Text = $"펫 크기 {Math.Round(settings.Scale * 100)}%"; };
+        AutomationProperties.SetName(slider, T("펫 크기"));
+        slider.ValueChanged += (_, _) => { SetScale(slider.Value); sizeLabel.Text = T($"펫 크기 {Math.Round(settings.Scale * 100)}%"); };
         body.Children.Add(slider);
-        body.Children.Add(ActionButton("기본 크기 65%", () => slider.Value = 0.65));
-        var visible = new CheckBox { Content = "화면에 펫 표시", IsChecked = settings.Visible, Margin = new Thickness(3, 7, 3, 7) };
+        body.Children.Add(ActionButton(T("기본 크기 65%"), () => slider.Value = 0.65));
+        var visible = new CheckBox { Content = T("화면에 펫 표시"), IsChecked = settings.Visible, Margin = new Thickness(3, 7, 3, 7) };
         visible.Click += (_, _) => SetVisible(visible.IsChecked == true);
         body.Children.Add(visible);
-        var wander = new CheckBox { Content = "느긋하게 산책하기", IsChecked = settings.Wanders, Margin = new Thickness(3, 7, 3, 7) };
+        var wander = new CheckBox { Content = T("느긋하게 산책하기"), IsChecked = settings.Wanders, Margin = new Thickness(3, 7, 3, 7) };
         wander.Click += (_, _) => { settings.Wanders = wander.IsChecked == true; SaveSettings(); };
         body.Children.Add(wander);
-        if (preview != null) body.Children.Add(Text($"표정 미리보기 {Usage.Percent(preview)} · 실제 사용량이 아닙니다"));
+        if (preview != null) body.Children.Add(Text(T($"표정 미리보기 {Usage.Percent(preview)} · 실제 사용량이 아닙니다")));
         providerCards = new StackPanel();
         body.Children.Add(providerCards);
-        body.Children.Add(Text("표정은 정상 조회된 한도 중 가장 낮은 잔여량 기준 · 2분마다 갱신", 10));
-        refreshButton = ActionButton("사용량 새로고침", async () => await Refresh());
+        body.Children.Add(Text(T("표정은 정상 조회된 한도 중 가장 낮은 잔여량 기준 · 2분마다 갱신"), 10));
+        refreshButton = ActionButton(T("사용량 새로고침"), async () => await Refresh());
         body.Children.Add(refreshButton);
-        body.Children.Add(ActionButton("닫기", ClosePanel));
-        body.Children.Add(ActionButton("펫 종료", Quit));
+        body.Children.Add(ActionButton(T("닫기"), ClosePanel));
+        body.Children.Add(ActionButton(T("펫 종료"), Quit));
         panel = new Window
         {
-            Title = $"{CharacterName} 사용량", Width = 380, Height = Math.Min(780, screen.Height - 24),
+            Title = T($"{CharacterName} 사용량"), Width = 380, Height = Math.Min(780, screen.Height - 24),
             Topmost = true, ShowInTaskbar = false, ResizeMode = ResizeMode.NoResize,
             Background = new SolidColorBrush(Color.FromRgb(255, 250, 243)),
             Content = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }
@@ -447,28 +479,28 @@ internal sealed class PetApp : Window
 
     private void UpdateCards()
     {
-        if (caption != null) caption.Text = $"{CharacterName}의 에너지 · {Usage.Caption(Remaining)}";
-        if (panel != null) panel.Title = $"{CharacterName} 사용량";
-        if (refreshButton != null) { refreshButton.IsEnabled = !refreshing && preview == null; refreshButton.Content = refreshing ? "조회 중…" : "사용량 새로고침"; }
+        if (caption != null) caption.Text = T($"{CharacterName}의 에너지 · {Usage.Caption(Remaining)}");
+        if (panel != null) panel.Title = T($"{CharacterName} 사용량");
+        if (refreshButton != null) { refreshButton.IsEnabled = !refreshing && preview == null; refreshButton.Content = refreshing ? T("조회 중…") : T("사용량 새로고침"); }
         if (providerCards == null) return;
         providerCards.Children.Clear();
         foreach (var provider in providers)
         {
             var content = new StackPanel { Margin = new Thickness(12) };
-            content.Children.Add(Text($"{provider.Name} · {Usage.Percent(provider.Remaining)} 남음", 18));
+            content.Children.Add(Text(T($"{provider.Name} · {Usage.Percent(provider.Remaining)} 남음"), 18));
             if (provider.Reading is { } reading)
             {
                 foreach (var quota in reading.Windows)
                 {
-                    content.Children.Add(Text($"{quota.Title} · {Usage.Percent(quota.Remaining)}"));
+                    content.Children.Add(Text($"{T(quota.Title)} · {Usage.Percent(quota.Remaining)}"));
                     content.Children.Add(new ProgressBar { Minimum = 0, Maximum = 100, Value = quota.Remaining, Height = 6,
                         Margin = new Thickness(0, 4, 0, 4) });
-                    if (quota.ResetsAt is { } reset) content.Children.Add(Text($"{reset.ToLocalTime():g} 초기화", 10));
+                    if (quota.ResetsAt is { } reset) content.Children.Add(Text(T($"{reset.ToLocalTime().ToString("g", CultureInfo.GetCultureInfo(settings.Language == "ko" ? "ko-KR" : "en-US"))} 초기화"), 10));
                 }
-                content.Children.Add(Text($"{reading.FetchedAt.ToLocalTime():T} 조회{(provider.Error == null ? "" : " · 이전 데이터")}", 10));
+                content.Children.Add(Text(T($"{reading.FetchedAt.ToLocalTime().ToString("T", CultureInfo.GetCultureInfo(settings.Language == "ko" ? "ko-KR" : "en-US"))} 조회{(provider.Error == null ? "" : " · 이전 데이터")}"), 10));
             }
             if (provider.Error != null) content.Children.Add(Text(provider.Error));
-            else if (provider.Reading == null) content.Children.Add(Text(preview != null ? "미리보기 · 조회하지 않습니다" : refreshing ? "조회 중…" : "CLI 로그인 정보를 연결합니다."));
+            else if (provider.Reading == null) content.Children.Add(Text(preview != null ? T("미리보기 · 조회하지 않습니다") : refreshing ? T("조회 중…") : T("CLI 로그인 정보를 연결합니다.")));
             providerCards.Children.Add(new Border { Child = content, Background = Brushes.White,
                 CornerRadius = new CornerRadius(12), Margin = new Thickness(0, 5, 0, 5),
                 Opacity = provider.Error != null && provider.Reading != null ? 0.65 : 1 });

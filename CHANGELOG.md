@@ -3,6 +3,10 @@
 mac and Windows are versioned independently through [mac/VERSION](mac/VERSION)
 and [windows/VERSION](windows/VERSION).
 
+## Unreleased
+
+- Add English (default) and Korean UI modes on mac and Windows, with saved language selection.
+
 ## mac 1.0.0 — 2026-10-14
 
 - Animated Chiikawa, Hachiware, and Usagi pets with Swift/AppKit/SwiftUI.

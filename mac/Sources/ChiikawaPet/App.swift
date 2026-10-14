@@ -13,10 +13,10 @@ struct ChiikawaPetApp {
                 do {
                     let reading = try await usageClient.fetch(provider, allowKeychainPrompt: false)
                     for window in reading.windows {
-                        print("\(provider.rawValue) · \(window.title): \(window.remainingPercent)% remaining")
+                        print("\(provider.rawValue) · \(T(window.title)): \(window.remainingPercent)% remaining")
                     }
                 } catch {
-                    print("\(provider.rawValue): \(error.localizedDescription)")
+                    print("\(provider.rawValue): \(T(error.localizedDescription))")
                 }
             }
             return
@@ -61,6 +61,7 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var appearanceObservation: NSKeyValueObservation?
     private var direction: CGFloat = -1
     private var isDragging = false
+    private var appliedLanguage = AppLanguage.current
 
     init(previewPercent: Double?, showUsageOnLaunch: Bool) {
         store = UsageStore(usageFetching: UsageClient(), previewPercent: previewPercent)
@@ -75,7 +76,7 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             : NSPoint(x: saved.double(forKey: "petX"), y: saved.double(forKey: "petY"))
         let petSize = NSSize(width: 148 * store.petScale, height: 164 * store.petScale)
         petWindow = NSPanel(contentRect: NSRect(origin: origin, size: petSize), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        petWindow.title = "\(store.selectedCharacter.name) 펫"
+        petWindow.title = T("\(store.selectedCharacter.name) 펫")
         petWindow.setAccessibilityRole(.window)
         petWindow.setAccessibilitySubrole(.floatingWindow)
         petWindow.level = .floating
@@ -136,14 +137,22 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func updatePetPresentation() {
+        if appliedLanguage != store.language {
+            appliedLanguage = store.language
+            statusItem.menu = makeMenu()
+            let wasOpen = usageWindow?.isVisible == true
+            closeUsage()
+            if wasOpen { toggleUsage() }
+        }
+        petView.language = store.language
         petView.remainingPercent = store.remainingPercent
         petView.character = store.selectedCharacter
-        petWindow.title = "\(store.selectedCharacter.name) 펫"
-        usageWindow?.title = "\(store.selectedCharacter.name) 사용량"
+        petWindow.title = T("\(store.selectedCharacter.name) 펫")
+        usageWindow?.title = T("\(store.selectedCharacter.name) 사용량")
         resizePet()
         updatePetVisibility()
         let usageTitle = store.menuBarTitle
-        let description = "\(store.selectedCharacter.name) · \(usageTitle) · \(store.isPetVisible ? "펫 표시 중" : "펫 숨김")"
+        let description = T("\(store.selectedCharacter.name) · \(usageTitle) · \(store.isPetVisible ? "펫 표시 중" : "펫 숨김")")
         updateMenuBarArtwork()
         statusItem.button?.toolTip = description
         statusItem.button?.setAccessibilityLabel(description)
@@ -159,7 +168,7 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         for item in menu.items {
             if item.action == #selector(toggleUsage) {
-                item.title = "\(store.selectedCharacter.name) · 사용량 보기"
+                item.title = T("\(store.selectedCharacter.name) · 사용량 보기")
             } else if item.action == #selector(selectCharacter), let name = item.representedObject as? String {
                 item.state = name == store.selectedCharacter.rawValue ? .on : .off
             } else if item.action == #selector(selectPetSize), let scale = item.representedObject as? NSNumber {
@@ -223,7 +232,7 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let height = min(contentView.fittingSize.height, max(1, screen.height - 24))
         let hostingView = NSHostingView(rootView: usagePanel.frame(height: height))
         let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: UsagePanel.width, height: height), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        panel.title = "\(store.selectedCharacter.name) 사용량"
+        panel.title = T("\(store.selectedCharacter.name) 사용량")
         panel.setAccessibilityRole(.window)
         panel.setAccessibilitySubrole(.floatingWindow)
         panel.backgroundColor = .clear
@@ -271,8 +280,16 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func makeMenu() -> NSMenu {
         let menu = NSMenu()
         menu.delegate = self
-        menu.addItem(withTitle: "\(store.selectedCharacter.name) · 사용량 보기", action: #selector(toggleUsage), keyEquivalent: "")
-        menu.addItem(withTitle: "사용량 새로고침 / 연결", action: #selector(refreshUsage), keyEquivalent: "")
+        menu.addItem(withTitle: T("\(store.selectedCharacter.name) · 사용량 보기"), action: #selector(toggleUsage), keyEquivalent: "")
+        menu.addItem(withTitle: T("사용량 새로고침 / 연결"), action: #selector(refreshUsage), keyEquivalent: "")
+        let languages = NSMenu()
+        for language in AppLanguage.allCases {
+            let item = languages.addItem(withTitle: language.title, action: #selector(selectLanguage), keyEquivalent: "")
+            item.representedObject = language.rawValue
+            item.target = self
+            item.state = language == store.language ? .on : .off
+        }
+        menu.addItem(withTitle: "Language / 언어", action: nil, keyEquivalent: "").submenu = languages
         let characters = NSMenu()
         characters.delegate = self
         for character in PetCharacter.allCases {
@@ -281,30 +298,35 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             choice.state = character == store.selectedCharacter ? .on : .off
             choice.target = self
         }
-        let characterMenu = menu.addItem(withTitle: "펫 종류", action: nil, keyEquivalent: "")
+        let characterMenu = menu.addItem(withTitle: T("펫 종류"), action: nil, keyEquivalent: "")
         characterMenu.submenu = characters
         let sizes = NSMenu()
         sizes.delegate = self
         for percent in [40, 55, 65, 80, 100, 120] {
-            let title = percent == 65 ? "65% (기본)" : "\(percent)%"
+            let title = percent == 65 ? T("65% (기본)") : "\(percent)%"
             let choice = sizes.addItem(withTitle: title, action: #selector(selectPetSize), keyEquivalent: "")
             let scale = Double(percent) / 100
             choice.representedObject = NSNumber(value: scale)
             choice.state = abs(store.petScale - scale) < 0.0001 ? .on : .off
             choice.target = self
         }
-        let sizeMenu = menu.addItem(withTitle: "펫 크기", action: nil, keyEquivalent: "")
+        let sizeMenu = menu.addItem(withTitle: T("펫 크기"), action: nil, keyEquivalent: "")
         sizeMenu.submenu = sizes
-        let visibility = menu.addItem(withTitle: "펫 표시", action: #selector(togglePetVisibility), keyEquivalent: "")
+        let visibility = menu.addItem(withTitle: T("펫 표시"), action: #selector(togglePetVisibility), keyEquivalent: "")
         visibility.state = store.isPetVisible ? .on : .off
         menu.addItem(.separator())
-        let wander = menu.addItem(withTitle: "느긋하게 산책하기", action: #selector(toggleWandering), keyEquivalent: "")
+        let wander = menu.addItem(withTitle: T("느긋하게 산책하기"), action: #selector(toggleWandering), keyEquivalent: "")
         wander.state = store.wanders ? .on : .off
-        menu.addItem(withTitle: "화면 가운데로 데려오기", action: #selector(centerPet), keyEquivalent: "")
+        menu.addItem(withTitle: T("화면 가운데로 데려오기"), action: #selector(centerPet), keyEquivalent: "")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "펫 종료", action: #selector(quit), keyEquivalent: "q")
+        menu.addItem(withTitle: T("펫 종료"), action: #selector(quit), keyEquivalent: "q")
         for item in menu.items { item.target = self }
         return menu
+    }
+
+    @objc private func selectLanguage(_ sender: NSMenuItem) {
+        guard let code = sender.representedObject as? String, let language = AppLanguage(rawValue: code) else { return }
+        store.language = language
     }
 
     @objc private func refreshUsage() { Task { await store.refresh(allowKeychainPrompt: true) } }

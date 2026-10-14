@@ -3,6 +3,7 @@ import ImageIO
 
 @MainActor
 class PixelPetView: NSView {
+    var language = AppLanguage.current { didSet { updateAccessibility() } }
     var remainingPercent: Double? {
         didSet {
             guard remainingPercent != oldValue else { return }
@@ -156,18 +157,20 @@ class PixelPetView: NSView {
     private func configureAccessibility() {
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
-        toolTip = "클릭: 사용량 · 드래그: 이동 · 우클릭: 펫 종류"
+        toolTip = T("클릭: 사용량 · 드래그: 이동 · 우클릭: 펫 종류")
         setAccessibilityHelp(toolTip)
         updateAccessibility()
     }
 
     private func updateAccessibility() {
+        toolTip = T("클릭: 사용량 · 드래그: 이동 · 우클릭: 펫 종류")
+        setAccessibilityHelp(toolTip)
         let mood = PetMood.forRemaining(remainingPercent)
         if let remainingPercent {
             let percent = remainingPercent.formatted(.number.precision(.fractionLength(0...1)))
-            setAccessibilityLabel("\(character.name), 잔여량 \(percent)퍼센트. \(mood.caption)")
+            setAccessibilityLabel(T("\(character.name), 잔여량 \(percent)퍼센트. \(mood.caption)"))
         } else {
-            setAccessibilityLabel("\(character.name), 잔여량을 아직 몰라요. \(mood.caption)")
+            setAccessibilityLabel(T("\(character.name), 잔여량을 아직 몰라요. \(mood.caption)"))
         }
     }
 

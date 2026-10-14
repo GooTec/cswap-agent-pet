@@ -65,12 +65,12 @@ enum PetMood: String, Sendable {
     }
     var caption: String {
         switch self {
-        case .delighted: "와아! 아직 한가득!"
-        case .happy: "오늘도 같이 힘내자"
-        case .uneasy: "조금씩 아껴 쓰자…"
-        case .sad: "이제 얼마 안 남았어…"
-        case .crying: "울먹… 잠깐 쉬었다 가자"
-        case .unknown: "연결하면 기분을 알려줄게"
+        case .delighted: T("와아! 아직 한가득!")
+        case .happy: T("오늘도 같이 힘내자")
+        case .uneasy: T("조금씩 아껴 쓰자…")
+        case .sad: T("이제 얼마 안 남았어…")
+        case .crying: T("울먹… 잠깐 쉬었다 가자")
+        case .unknown: T("연결하면 기분을 알려줄게")
         }
     }
 }

@@ -16,6 +16,7 @@ struct UsagePanel: View {
         .background(petPaper)
         .clipShape(RoundedRectangle(cornerRadius: 22))
         .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(petInk.opacity(0.08)))
+        .environment(\.locale, store.language.locale)
         .environment(\.colorScheme, .light)
     }
 
@@ -26,7 +27,7 @@ struct UsagePanel: View {
                     Text("CHIIKAWA PET")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .tracking(2).foregroundStyle(.secondary)
-                    Text("\(store.selectedCharacter.name)의 에너지")
+                    Text(T("\(store.selectedCharacter.name)의 에너지"))
                         .font(.system(size: 23, weight: .bold, design: .rounded))
                     Text(store.mood.caption).font(.system(size: 12)).foregroundStyle(.secondary)
                 }
@@ -35,6 +36,12 @@ struct UsagePanel: View {
                     .frame(width: 68, height: 84).accessibilityHidden(true)
                     .allowsHitTesting(false)
             }
+            Picker("Language / 언어", selection: $store.language) {
+                ForEach(AppLanguage.allCases) { language in
+                    Text(language.title).tag(language)
+                }
+            }
+            .pickerStyle(.segmented)
             HStack(spacing: 8) {
                 ForEach(PetCharacter.allCases) { character in
                     CharacterCard(
@@ -48,38 +55,38 @@ struct UsagePanel: View {
             }
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("펫 크기").font(.system(size: 12, weight: .semibold))
+                    Text(T("펫 크기")).font(.system(size: 12, weight: .semibold))
                     Text("\(Int((store.petScale * 100).rounded()))%")
                         .font(.system(size: 12, weight: .medium)).monospacedDigit()
                     Spacer()
-                    Button("기본값 65%") {
+                    Button(T("기본값 65%")) {
                         store.setPetScale(UsageStore.defaultPetScale)
                     }
                     .controlSize(.small)
-                    .accessibilityLabel("펫 크기를 기본값 65%로 재설정")
+                    .accessibilityLabel(T("펫 크기를 기본값 65%로 재설정"))
                 }
                 Slider(
                     value: Binding(get: { store.petScale }, set: { store.setPetScale($0) }),
                     in: UsageStore.petScaleRange,
                     step: 0.05
                 ) {
-                    Text("펫 크기")
+                    Text(T("펫 크기"))
                 } minimumValueLabel: {
                     Text("40%").font(.system(size: 10))
                 } maximumValueLabel: {
                     Text("120%").font(.system(size: 10))
                 }
-                .accessibilityLabel("펫 크기")
+                .accessibilityLabel(T("펫 크기"))
                 .accessibilityValue("\(Int((store.petScale * 100).rounded()))%")
-                Toggle("화면에 펫 표시", isOn: $store.isPetVisible)
+                Toggle(T("화면에 펫 표시"), isOn: $store.isPetVisible)
                     .toggleStyle(.switch).controlSize(.small).font(.system(size: 12))
-                    .accessibilityLabel("화면에 펫 표시")
-                Text("숨겨도 메뉴바에서 사용량과 펫을 확인할 수 있어요.")
+                    .accessibilityLabel(T("화면에 펫 표시"))
+                Text(T("숨겨도 메뉴바에서 사용량과 펫을 확인할 수 있어요."))
                     .font(.system(size: 10)).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if store.previewPercent != nil {
-                Text("표정 미리보기 · 실제 사용량이 아닙니다")
+                Text(T("표정 미리보기 · 실제 사용량이 아닙니다"))
                     .font(.system(size: 11, weight: .semibold)).foregroundStyle(.orange)
             }
             ForEach(store.providers, id: \.provider) { provider in
@@ -88,12 +95,12 @@ struct UsagePanel: View {
             HStack(spacing: 6) {
                 Circle().fill(store.remainingPercent == nil ? Color.gray : Color.green)
                     .frame(width: 5, height: 5)
-                Text("표정은 조회된 한도 중 가장 낮은 잔여량 기준")
+                Text(T("표정은 조회된 한도 중 가장 낮은 잔여량 기준"))
                     .font(.system(size: 10)).foregroundStyle(.secondary)
             }
             Divider()
             HStack {
-                Toggle("느긋하게 산책하기", isOn: $store.wanders)
+                Toggle(T("느긋하게 산책하기"), isOn: $store.wanders)
                     .toggleStyle(.switch).controlSize(.small).font(.system(size: 12))
                 Spacer()
                 Button {
@@ -103,14 +110,14 @@ struct UsagePanel: View {
                 }
                 .buttonStyle(.borderless)
                 .disabled(store.isRefreshing || store.previewPercent != nil)
-                .help("로그인 정보 연결 및 사용량 새로고침")
-                .accessibilityLabel("사용량 새로고침 및 연결")
+                .help(T("로그인 정보 연결 및 사용량 새로고침"))
+                .accessibilityLabel(T("사용량 새로고침 및 연결"))
             }
             HStack {
-                Text("클릭: 사용량 · 드래그: 이동 · 우클릭: 메뉴")
+                Text(T("클릭: 사용량 · 드래그: 이동 · 우클릭: 메뉴"))
                     .font(.system(size: 10)).foregroundStyle(.secondary)
                 Spacer()
-                Button("종료") { NSApp.terminate(nil) }
+                Button(T("종료")) { NSApp.terminate(nil) }
                     .font(.system(size: 10)).buttonStyle(.borderless).foregroundStyle(.secondary)
             }
         }
@@ -118,6 +125,7 @@ struct UsagePanel: View {
         .foregroundStyle(petInk)
         .frame(width: Self.width)
         .fixedSize(horizontal: false, vertical: true)
+        .environment(\.locale, store.language.locale)
         .environment(\.colorScheme, .light)
     }
 }
@@ -153,7 +161,7 @@ private struct CharacterCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityRepresentation {
-            Button("\(character.name) 선택", action: select)
+            Button(T("\(character.name) 선택"), action: select)
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
         }
     }
@@ -179,9 +187,9 @@ private struct ProviderCard: View {
                 if let percent = display.reading?.remainingPercent {
                     Text("\(Int(percent.rounded(.down)))")
                         .font(.system(size: 30, weight: .bold, design: .rounded))
-                    + Text("% 남음").font(.system(size: 11, weight: .medium))
+                    + Text(T("% 남음")).font(.system(size: 11, weight: .medium))
                 } else {
-                    Text(refreshing ? "조회 중…" : "연결 필요")
+                    Text(refreshing ? T("조회 중…") : T("연결 필요"))
                         .font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
                 }
             }
@@ -189,7 +197,7 @@ private struct ProviderCard: View {
                 ForEach(Array(reading.windows.enumerated()), id: \.offset) { _, window in
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
-                            Text(window.title)
+                            Text(T(window.title))
                             Spacer()
                             Text("\(Int(window.remainingPercent.rounded(.down)))%")
                                 .monospacedDigit()
@@ -202,23 +210,23 @@ private struct ProviderCard: View {
                             }
                         }.frame(height: 5)
                         if let reset = window.resetsAt {
-                            Text("\(reset.formatted(date: .abbreviated, time: .shortened)) 초기화")
+                            Text(T("\(reset.formatted(.dateTime.year().month().day().hour().minute().locale(AppLanguage.current.locale))) 초기화"))
                                 .font(.system(size: 9)).foregroundStyle(.secondary)
                         }
                     }
                 }
-                Text("\(reading.fetchedAt.formatted(date: .omitted, time: .standard)) 조회\(display.error == nil ? " · 2분마다 갱신" : " · 이전 데이터")")
+                Text(T("\(reading.fetchedAt.formatted(.dateTime.hour().minute().second().locale(AppLanguage.current.locale))) 조회\(display.error == nil ? " · 2분마다 갱신" : " · 이전 데이터")"))
                     .font(.system(size: 9)).foregroundStyle(.secondary)
             }
             if let error = display.error {
-                Text(error).font(.system(size: 11)).foregroundStyle(Color(red: 0.66, green: 0.32, blue: 0.28))
+                Text(T(error)).font(.system(size: 11)).foregroundStyle(Color(red: 0.66, green: 0.32, blue: 0.28))
                     .fixedSize(horizontal: false, vertical: true)
             } else if display.reading == nil && !refreshing {
-                Text(display.provider == .claude ? "Claude Code의 로그인 정보를 연결합니다." : "Codex의 ChatGPT 로그인 정보를 연결합니다.")
+                Text(display.provider == .claude ? T("Claude Code의 로그인 정보를 연결합니다.") : T("Codex의 ChatGPT 로그인 정보를 연결합니다."))
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             }
             if display.reading == nil || display.error != nil {
-                Text("아래 새로고침 버튼으로 연결 · 인증 정보는 이 Mac에만")
+                Text(T("아래 새로고침 버튼으로 연결 · 인증 정보는 이 Mac에만"))
                     .font(.system(size: 9)).foregroundStyle(.secondary)
             }
         }

@@ -16,6 +16,11 @@ from its DLLs and other files. Packages currently have no code-signing certifica
 The pet appears near the bottom-right of the screen. It has no taskbar button;
 use its notification-area icon, including the `^` overflow if Windows hides it.
 
+## Language
+
+English is the default. Choose English or 한국어 in the usage panel or control menu.
+The choice is applied immediately and saved for the next launch.
+
 ## Controls
 
 | Action | Result |

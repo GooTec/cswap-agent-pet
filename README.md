@@ -13,7 +13,7 @@ Your pet's expression changes with the lowest currently available quota.
 | <img src="docs/images/mac-demo.gif" width="320" alt="macOS UI recording showing Chiikawa, Hachiware, and Usagi selection"> | <img src="docs/images/mac-usage.png" width="320" alt="macOS usage panel with character controls and simulated Claude and Codex quotas"> |
 
 Real macOS UI captures using preview mode and simulated quotas. The app's
-interface is currently Korean; the displayed percentages are demo values.
+captures show Korean mode; the displayed percentages are demo values.
 
 ## Features
 
@@ -24,7 +24,8 @@ interface is currently Korean; the displayed percentages are demo values.
 - macOS menu-bar controls and Windows system-tray controls, even when the pet is hidden.
 - Existing Claude Code and Codex logins; no separate account or server.
 
-The application currently uses Korean interface labels. Windows GUI behavior is
+English is the default language. Select **English / 한국어** in the usage panel
+or control menu; your choice is saved for the next launch. Windows GUI behavior is
 still experimental; see [known limitations](#privacy-and-known-limitations).
 
 ## Installation
