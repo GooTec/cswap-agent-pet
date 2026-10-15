@@ -131,7 +131,8 @@ cd chiikawa-agent-pet
 ./scripts/test.sh
 ```
 
-`Launch.command`는 `build/ChiikawaPet.app`을 빌드하고 실행합니다.
+`Launch.command`는 앱을 빌드하고 실행 중인 펫을 종료한 뒤
+`/Applications/ChiikawaPet.app`에 설치하거나 업데이트하고 해당 앱을 실행합니다.
 `test.sh`는 전체 Xcode 없이 Command Line Tools만 설치된 환경도 지원합니다.
 
 ### Windows
@@ -174,7 +175,7 @@ OS별 코드는 분리하고 두 앱 모두 `assets/`의 같은 PNG를 포함합
 기존 펫을 종료한 뒤 실행하세요. 미리보기에서는 실제 계정 사용량을 조회하지 않습니다.
 
 ```sh
-open -n build/ChiikawaPet.app --args --preview 10 --show-usage
+open -n /Applications/ChiikawaPet.app --args --preview 10 --show-usage
 ```
 
 ```powershell
@@ -193,7 +194,7 @@ open -n build/ChiikawaPet.app --args --preview 10 --show-usage
 - 기존 토큰은 각 제공자의 HTTPS 사용량 엔드포인트에만 전송합니다. 별도 서버, 브라우저 쿠키 수집, 토큰 로그·저장 기능은 없습니다.
 - 사용량 엔드포인트는 관측된 인터페이스이며 안정성이 보장된 공개 API가 아닙니다. 제공자 변경으로 연동이 깨질 수 있습니다.
 - Windows 화면·설치 프로그램 실행·혼합 DPI는 Windows에서 확인해야 합니다. 크로스 빌드와 로직 검사가 화면의 정확성까지 보장하지 않습니다.
-- macOS의 Hidden Bar 배치·접기 동작은 완전히 검증하지 않았습니다.
+- macOS 27에서 Hidden Bar 1.11.1을 사용하면 `/Applications`에 설치한 앱을 실행해야 합니다. `build/`, 다운로드 폴더, `~/Applications`에서 실행하면 화살표 오른쪽에 배치해도 숨겨질 수 있습니다. `Launch.command`는 필요한 위치에 설치한 뒤 실행합니다.
 - 공인 서명과 공증은 설정하지 않았습니다. 설치 파일 생성과 소스 코드 라이선스는 외부 이미지 사용 권한을 부여하지 않습니다.
 
 ## 기여

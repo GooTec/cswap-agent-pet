@@ -136,7 +136,8 @@ Install Command Line Tools with `xcode-select --install` if needed, then:
 ./scripts/test.sh
 ```
 
-`Launch.command` builds and opens `build/ChiikawaPet.app`.
+`Launch.command` builds the app, quits the running copy, installs or updates
+`/Applications/ChiikawaPet.app`, and launches that installed copy.
 `test.sh` also supports Command Line Tools without full Xcode.
 
 ### Windows
@@ -180,7 +181,7 @@ Platform code stays separate. Both applications embed the same PNG files from
 Quit the running pet first. Previews do not request real account usage.
 
 ```sh
-open -n build/ChiikawaPet.app --args --preview 10 --show-usage
+open -n /Applications/ChiikawaPet.app --args --preview 10 --show-usage
 ```
 
 ```powershell
@@ -198,7 +199,7 @@ Release for matching `mac-vMAJOR.MINOR.PATCH` or `windows-vMAJOR.MINOR.PATCH` ta
 - Existing tokens are sent only to the corresponding provider's HTTPS usage endpoint. There is no separate backend, browser-cookie collection, or token logging/storage.
 - Usage endpoints are observed interfaces, not guaranteed stable public APIs. Provider changes can break the integration.
 - Windows GUI, installer execution, and mixed-DPI behavior require Windows validation. Cross-compilation and logic checks do not establish visual correctness.
-- Hidden Bar placement and collapse behavior on macOS have not been fully verified.
+- With Hidden Bar 1.11.1 on macOS 27, launch the app from `/Applications`. Apps launched from `build/`, Downloads, or `~/Applications` can be hidden even when placed to the right of Hidden Bar's arrow. The source launcher installs to the required location.
 - Signing and notarization are not configured. Installer builds and source-code licensing do not grant rights to third-party artwork.
 
 ## Contributing

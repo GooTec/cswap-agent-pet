@@ -11,6 +11,10 @@ Choose the `mac-arm64.dmg` package for Apple Silicon or `mac-x86_64.dmg`
 for Intel. Open the DMG, drag `ChiikawaPet.app` onto Applications, and launch it.
 Quit a running pet before replacing the app during an update.
 
+With Hidden Bar 1.11.1 on macOS 27, use exactly `/Applications/ChiikawaPet.app`.
+Its native visibility restriction can hide apps launched from other directories,
+including `~/Applications`, even when their icons are on the visible side.
+
 The current app is ad-hoc signed and has no Apple Developer ID notarization.
 If macOS blocks it, review the source and release checksum, then use System
 Settings → Privacy & Security → Open Anyway if you want to run that download.
@@ -60,13 +64,16 @@ Install Swift 6+ through Xcode or Command Line Tools, then run from the reposito
 ./scripts/package-mac.sh arm64
 ```
 
+`Launch.command` builds, quits the running pet, installs or updates the app in
+`/Applications`, and launches that copy. The build and packaging scripts alone
+do not install it.
+
 Use `x86_64` to build an Intel DMG. Packages go to `build/release/mac/1.0.0/`.
 Quit the running app before trying a preview, which performs no account requests:
 
 ```sh
-open -n build/ChiikawaPet.app --args --preview 10 --show-usage
+open -n /Applications/ChiikawaPet.app --args --preview 10 --show-usage
 ```
 
-Hidden Bar placement and collapse behavior are not fully verified.
 Source code is MIT licensed; the package includes `LICENSE` and a separate
 `ARTWORK-NOTICE.md` for character images and provider logos.

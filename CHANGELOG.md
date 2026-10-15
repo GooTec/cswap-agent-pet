@@ -5,6 +5,8 @@ and [windows/VERSION](windows/VERSION).
 
 ## Unreleased
 
+- Fix macOS 27 / Hidden Bar 1.11.1 menu-bar hiding by installing and launching source builds from `/Applications` instead of the repository's `build/` directory; preserve the existing app preferences.
+
 - Add Momonga with six expressions, blink animation, saved selection, and English/Korean names on both platforms.
 
 - Add English (default) and Korean UI modes on mac and Windows, with saved language selection.

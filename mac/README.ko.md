@@ -11,6 +11,10 @@ Apple Silicon은 `mac-arm64.dmg`, Intel은 `mac-x86_64.dmg`를 선택하세요.
 DMG를 열고 `ChiikawaPet.app`을 응용 프로그램 폴더로 옮긴 뒤 실행합니다.
 업데이트할 때는 실행 중인 펫을 먼저 종료한 뒤 앱을 교체하세요.
 
+macOS 27에서 Hidden Bar 1.11.1을 사용한다면 `/Applications/ChiikawaPet.app`을 실행하세요.
+이 버전의 숨김 API는 `~/Applications`를 포함한 다른 경로에서 실행한 앱을
+표시 영역에 배치해도 숨길 수 있습니다.
+
 현재 앱은 ad-hoc 서명이며 Apple Developer ID 공증은 없습니다. macOS가 차단하면
 소스와 릴리즈 체크섬을 확인한 뒤 실행을 원할 경우 시스템 설정 → 개인정보 보호 및
 보안 → 확인 없이 열기 옵션을 사용할 수 있습니다.
@@ -56,13 +60,15 @@ Xcode 또는 Command Line Tools로 Swift 6 이상을 설치한 뒤 저장소 루
 ./scripts/package-mac.sh arm64
 ```
 
+`Launch.command`는 빌드 후 실행 중인 펫을 종료하고 `/Applications`에 설치하거나
+업데이트한 뒤 해당 앱을 실행합니다. 빌드·패키징 스크립트만 실행하면 설치하지 않습니다.
+
 Intel DMG는 `x86_64`를 지정합니다. 배포 파일은 `build/release/mac/1.0.0/`에 생성됩니다.
 미리보기는 기존 앱을 종료한 뒤 실행하며 실제 사용량을 조회하지 않습니다.
 
 ```sh
-open -n build/ChiikawaPet.app --args --preview 10 --show-usage
+open -n /Applications/ChiikawaPet.app --args --preview 10 --show-usage
 ```
 
-Hidden Bar 배치·접기 동작은 완전히 검증하지 않았습니다.
 소스 코드는 MIT입니다. 배포본에는 `LICENSE`와 캐릭터 이미지·로고의 별도 범위를 안내하는
 `ARTWORK-NOTICE.md`를 포함합니다.
