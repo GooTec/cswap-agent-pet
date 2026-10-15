@@ -84,6 +84,12 @@ actor UsageClient: UsageFetching {
         guard directory.resolvingSymlinksInPath().standardizedFileURL == defaultDirectory.resolvingSymlinksInPath().standardizedFileURL else {
             throw UsageFailure.loginRequired(.claude)
         }
+        // Claude Code writes this item through /usr/bin/security, so only that tool is on its ACL.
+        // Reading through the same tool avoids the prompt, and keeps working after the item is rewritten.
+        if let data = Self.securityToolCredential(service: "Claude Code-credentials"),
+           let token = try Self.parseClaudeCredential(data) {
+            return token
+        }
         let data = try keychainCredential(service: "Claude Code-credentials", account: nil, allowPrompt: allowKeychainPrompt)
         if let data, let token = try Self.parseClaudeCredential(data) { return token }
         throw UsageFailure.loginRequired(.claude)
@@ -133,6 +139,21 @@ actor UsageClient: UsageFetching {
 
     private static func validHeader(_ text: String) -> Bool {
         !text.isEmpty && text.unicodeScalars.allSatisfy { $0.value >= 33 && $0.value <= 126 }
+    }
+
+    private static func securityToolCredential(service: String) -> Data? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+        process.arguments = ["find-generic-password", "-s", service, "-w"]
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return nil }
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { return nil }
+        let trimmed = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : Data(trimmed.utf8)
     }
 
     private func keychainCredential(service: String, account: String?, allowPrompt: Bool) throws -> Data? {
