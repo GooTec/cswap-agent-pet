@@ -54,6 +54,8 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private var animationTimer: Timer?
     private var refreshTimer: Timer?
+    private var swapTimer: Timer?
+    private let accountsMenu = NSMenu()
     private var observation: AnyCancellable?
     private var clickMonitor: Any?
     private var appliedPetVisibility: Bool?
@@ -64,7 +66,7 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var appliedLanguage = AppLanguage.current
 
     init(previewPercent: Double?, showUsageOnLaunch: Bool) {
-        store = UsageStore(usageFetching: UsageClient(), previewPercent: previewPercent)
+        store = UsageStore(usageFetching: UsageClient(), swapClient: SwapClient(), previewPercent: previewPercent)
         self.showUsageOnLaunch = showUsageOnLaunch
     }
 
@@ -117,13 +119,24 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         NotificationCenter.default.addObserver(self, selector: #selector(screenChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(screenChanged), name: NSWorkspace.didWakeNotification, object: nil)
-        Task { await store.refresh() }
+        accountsMenu.delegate = self
+        if store.usesSwap {
+            // Picks up account switches made elsewhere (cswap auto-switch, terminal) so the pet follows.
+            swapTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
+                Task { @MainActor in await self?.store.refreshSwap() }
+            }
+        }
+        Task {
+            await store.refreshSwap()
+            await store.refresh()
+        }
         if showUsageOnLaunch { toggleUsage() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         animationTimer?.invalidate()
         refreshTimer?.invalidate()
+        swapTimer?.invalidate()
         if let clickMonitor { NSEvent.removeMonitor(clickMonitor) }
         savePosition()
     }
@@ -166,6 +179,10 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        if menu === accountsMenu {
+            rebuildAccountsMenu()
+            return
+        }
         for item in menu.items {
             if item.action == #selector(toggleUsage) {
                 item.title = T("\(store.selectedCharacter.name) · 사용량 보기")
@@ -300,6 +317,9 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         let characterMenu = menu.addItem(withTitle: T("펫 종류"), action: nil, keyEquivalent: "")
         characterMenu.submenu = characters
+        if store.usesSwap {
+            menu.addItem(withTitle: T("Claude 계정 전환"), action: nil, keyEquivalent: "").submenu = accountsMenu
+        }
         let sizes = NSMenu()
         sizes.delegate = self
         for percent in [40, 55, 65, 80, 100, 120] {
@@ -339,7 +359,43 @@ final class PetAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func selectCharacter(_ sender: NSMenuItem) {
         guard let name = sender.representedObject as? String,
               let character = PetCharacter(rawValue: name) else { return }
-        store.selectedCharacter = character
+        store.selectCharacter(character)
+    }
+
+    private func rebuildAccountsMenu() {
+        accountsMenu.removeAllItems()
+        let accounts = store.swap?.accounts ?? []
+        for account in accounts {
+            let name = store.character(for: account).map { "\($0.name) · " } ?? ""
+            let item = accountsMenu.addItem(withTitle: "\(name)\(account.label)", action: #selector(selectAccount), keyEquivalent: "")
+            item.representedObject = account.number
+            item.state = account.isActive ? .on : .off
+            item.target = self
+        }
+        if !accounts.isEmpty { accountsMenu.addItem(.separator()) }
+        let actions: [(String, Selector)] = [
+            (T("여유 있는 계정으로"), #selector(switchToBestAccount)),
+            (T("현재 로그인 계정 등록"), #selector(addCurrentAccount))
+        ]
+        for (title, action) in actions {
+            accountsMenu.addItem(withTitle: title, action: action, keyEquivalent: "").target = self
+        }
+        let auto = accountsMenu.addItem(withTitle: T("자동 전환"), action: #selector(toggleAutoSwitch), keyEquivalent: "")
+        auto.state = store.swap?.autoSwitchEnabled == true ? .on : .off
+        auto.target = self
+        for item in accountsMenu.items where item.action != nil { item.isEnabled = !store.isSwitchingAccount }
+    }
+
+    @objc private func selectAccount(_ sender: NSMenuItem) {
+        guard let number = sender.representedObject as? Int,
+              let account = store.swap?.accounts.first(where: { $0.number == number }) else { return }
+        Task { await store.switchAccount(to: account) }
+    }
+    @objc private func switchToBestAccount() { Task { await store.switchToBestAccount() } }
+    @objc private func addCurrentAccount() { Task { await store.addCurrentAccount() } }
+    @objc private func toggleAutoSwitch() {
+        let enabled = !(store.swap?.autoSwitchEnabled ?? false)
+        Task { await store.setAutoSwitch(enabled) }
     }
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func centerPet() {

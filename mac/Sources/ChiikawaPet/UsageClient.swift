@@ -329,10 +329,10 @@ private struct ClaudeAccess {
 
 private struct SwapUsageCache: Decodable {
     let schemaVersion: Int?
-    let accounts: [String: SwapAccount]
+    let accounts: [String: SwapCacheAccount]
 }
 
-private struct SwapAccount: Decodable {
+private struct SwapCacheAccount: Decodable {
     let organizationUuid: String?
     let fetchedAt: Double?
     let lastGood: SwapUsage?

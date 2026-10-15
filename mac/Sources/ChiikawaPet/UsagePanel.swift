@@ -47,11 +47,15 @@ struct UsagePanel: View {
                     CharacterCard(
                         character: character,
                         remainingPercent: store.remainingPercent,
-                        isSelected: store.selectedCharacter == character
+                        isSelected: store.selectedCharacter == character,
+                        account: store.account(for: character)?.label
                     ) {
-                        store.selectedCharacter = character
+                        store.selectCharacter(character)
                     }
                 }
+            }
+            if store.usesSwap {
+                AccountsSection(store: store)
             }
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -134,6 +138,7 @@ private struct CharacterCard: View {
     let character: PetCharacter
     let remainingPercent: Double?
     let isSelected: Bool
+    let account: String?
     let select: () -> Void
 
     var body: some View {
@@ -145,6 +150,10 @@ private struct CharacterCard: View {
                     .allowsHitTesting(false)
                 Text(character.name)
                     .font(.system(size: 12, weight: isSelected ? .bold : .medium))
+                if let account {
+                    Text(account).font(.system(size: 9)).foregroundStyle(.secondary)
+                        .lineLimit(1).truncationMode(.middle).padding(.horizontal, 6)
+                }
             }
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity)
@@ -164,6 +173,89 @@ private struct CharacterCard: View {
             Button(T("\(character.name) 선택"), action: select)
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
         }
+    }
+}
+
+private struct AccountsSection: View {
+    @ObservedObject var store: UsageStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(T("Claude 계정")).font(.system(size: 12, weight: .semibold))
+                if store.isSwitchingAccount {
+                    ProgressView().controlSize(.mini)
+                }
+                Spacer()
+                Toggle(T("자동 전환"), isOn: Binding(
+                    get: { store.swap?.autoSwitchEnabled ?? false },
+                    set: { enabled in Task { await store.setAutoSwitch(enabled) } }
+                ))
+                .toggleStyle(.switch).controlSize(.mini).font(.system(size: 11))
+                .disabled(store.swap == nil || store.isSwitchingAccount)
+            }
+            ForEach(store.swap?.accounts ?? []) { account in
+                AccountRow(store: store, account: account)
+            }
+            HStack {
+                Button(T("여유 있는 계정으로")) { Task { await store.switchToBestAccount() } }
+                Button(T("현재 로그인 계정 등록")) { Task { await store.addCurrentAccount() } }
+            }
+            .controlSize(.small)
+            .disabled(store.isSwitchingAccount)
+            Text(T("새 계정은 터미널에서 claude 실행 후 /login으로 로그인한 다음 등록하세요."))
+                .font(.system(size: 9)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let message = store.swapMessage {
+                Text(T(message)).font(.system(size: 10)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
+private struct AccountRow: View {
+    @ObservedObject var store: UsageStore
+    let account: SwapAccount
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Menu {
+                ForEach(PetCharacter.allCases) { character in
+                    Button(character.name) { store.assign(character, to: account) }
+                }
+            } label: {
+                Text(store.character(for: account)?.name ?? "—").font(.system(size: 11, weight: .semibold))
+            }
+            .menuStyle(.borderlessButton).fixedSize()
+            .help(T("이 계정의 캐릭터"))
+            Button {
+                Task { await store.switchAccount(to: account) }
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(account.label).font(.system(size: 11, weight: account.isActive ? .bold : .regular))
+                        .lineLimit(1).truncationMode(.middle)
+                    Text(usageSummary).font(.system(size: 9)).foregroundStyle(.secondary).monospacedDigit()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(account.isActive || store.isSwitchingAccount)
+            if account.isActive {
+                Text(T("사용 중")).font(.system(size: 9, weight: .bold))
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(Color(red: 0.95, green: 0.85, blue: 0.79), in: Capsule())
+            }
+        }
+        .padding(8)
+        .background(.white.opacity(account.isActive ? 0.95 : 0.6), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var usageSummary: String {
+        func percent(_ value: Double?) -> String { value.map { "\(Int($0.rounded(.down)))%" } ?? "—" }
+        return T("5시간 \(percent(account.fiveHourRemaining)) · 주간 \(percent(account.weeklyRemaining)) 남음")
     }
 }
 

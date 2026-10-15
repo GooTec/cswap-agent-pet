@@ -28,12 +28,20 @@ final class UsageStore: ObservableObject {
     @Published var isPetVisible: Bool {
         didSet { preferences.set(isPetVisible, forKey: "petVisible") }
     }
+    @Published private(set) var swap: SwapSnapshot?
+    @Published private(set) var accountCharacters: [String: PetCharacter] = [:]
+    @Published private(set) var isSwitchingAccount = false
+    @Published private(set) var swapMessage: String?
     let previewPercent: Double?
     private let usageFetching: any UsageFetching
+    private let swapClient: SwapClient?
     private let preferences: UserDefaults
+    private var isLoadingSwap = false
+    private var swapMessageIsListError = false
 
-    init(usageFetching: any UsageFetching, previewPercent: Double? = nil, preferences: UserDefaults = .standard) {
+    init(usageFetching: any UsageFetching, swapClient: SwapClient? = nil, previewPercent: Double? = nil, preferences: UserDefaults = .standard) {
         self.usageFetching = usageFetching
+        self.swapClient = previewPercent == nil && swapClient?.isInstalled == true ? swapClient : nil
         self.previewPercent = previewPercent
         self.preferences = preferences
         language = AppLanguage(rawValue: preferences.string(forKey: "appLanguage") ?? "en") ?? .english
@@ -47,6 +55,8 @@ final class UsageStore: ObservableObject {
             petScale = Self.defaultPetScale
         }
         isPetVisible = preferences.object(forKey: "petVisible") as? Bool ?? true
+        let savedCharacters = preferences.dictionary(forKey: "accountCharacters") as? [String: String] ?? [:]
+        accountCharacters = savedCharacters.compactMapValues { PetCharacter(rawValue: $0) }
         if let previewPercent {
             for index in providers.indices {
                 let window = try! QuotaWindow(title: "5시간", usedPercent: 100 - previewPercent, resetsAt: nil)
@@ -120,5 +130,110 @@ final class UsageStore: ObservableObject {
                 }
             }
         }
+    }
+
+    // MARK: - cswap accounts
+
+    var usesSwap: Bool { swapClient != nil }
+
+    func character(for account: SwapAccount) -> PetCharacter? { accountCharacters[account.email] }
+
+    func account(for character: PetCharacter) -> SwapAccount? {
+        guard let swap else { return nil }
+        return AccountCharacters.account(for: character, in: accountCharacters, accounts: swap.accounts)
+    }
+
+    func refreshSwap() async {
+        guard let swapClient, !isLoadingSwap else { return }
+        isLoadingSwap = true
+        defer { isLoadingSwap = false }
+        let previousActive = swap?.active?.email
+        do {
+            let snapshot = try await swapClient.snapshot()
+            if swapMessageIsListError { swapMessage = nil; swapMessageIsListError = false }
+            swap = snapshot
+            var saved = accountCharacters
+            // Keep the pet the user already sees on the active account when it has no character yet.
+            if let active = snapshot.active, saved[active.email] == nil,
+               !snapshot.accounts.contains(where: { saved[$0.email] == selectedCharacter }) {
+                saved[active.email] = selectedCharacter
+            }
+            saveAccountCharacters(AccountCharacters.assign(snapshot.accounts, saved: saved))
+            if let active = snapshot.active, let character = accountCharacters[active.email], character != selectedCharacter {
+                selectedCharacter = character
+            }
+            if previousActive != nil, snapshot.active?.email != previousActive {
+                await refresh()
+            }
+        } catch {
+            swapMessage = error.localizedDescription
+            swapMessageIsListError = true
+        }
+    }
+
+    /// Picking a character switches to the account that owns it; an unowned character goes to the active account.
+    func selectCharacter(_ character: PetCharacter) {
+        guard let swap, let active = swap.active else {
+            selectedCharacter = character
+            return
+        }
+        if let owner = account(for: character), owner.email != active.email {
+            Task { await switchAccount(to: owner) }
+        } else {
+            assign(character, to: active)
+        }
+    }
+
+    func assign(_ character: PetCharacter, to account: SwapAccount) {
+        guard let swap else { return }
+        saveAccountCharacters(AccountCharacters.reassign(account.email, to: character, in: accountCharacters, accounts: swap.accounts))
+        if let active = swap.active, let activeCharacter = accountCharacters[active.email] {
+            selectedCharacter = activeCharacter
+        }
+    }
+
+    func switchAccount(to account: SwapAccount) async {
+        await runSwapAction { client in
+            try await client.switchTo(account.number)
+            return T("\(account.label) 계정으로 전환했어요.")
+        }
+    }
+
+    func switchToBestAccount() async {
+        await runSwapAction { client in
+            try await client.switchToBest()
+            return nil
+        }
+    }
+
+    func addCurrentAccount() async {
+        await runSwapAction { client in try await client.addCurrent() }
+    }
+
+    func setAutoSwitch(_ enabled: Bool) async {
+        await runSwapAction { client in
+            let applied = try await client.setAutoSwitch(enabled)
+            return applied ? nil : T("자동 전환 설정은 cswap 메뉴바가 다시 시작될 때 적용돼요.")
+        }
+    }
+
+    private func runSwapAction(_ action: @escaping @Sendable (SwapClient) async throws -> String?) async {
+        guard let swapClient, !isSwitchingAccount else { return }
+        isSwitchingAccount = true
+        swapMessage = nil
+        swapMessageIsListError = false
+        do {
+            swapMessage = try await action(swapClient)
+        } catch {
+            swapMessage = error.localizedDescription
+        }
+        isSwitchingAccount = false
+        await refreshSwap()
+    }
+
+    private func saveAccountCharacters(_ characters: [String: PetCharacter]) {
+        guard characters != accountCharacters else { return }
+        accountCharacters = characters
+        preferences.set(characters.mapValues(\.rawValue), forKey: "accountCharacters")
     }
 }

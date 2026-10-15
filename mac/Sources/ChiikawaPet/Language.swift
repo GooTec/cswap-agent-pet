@@ -16,6 +16,16 @@ func T(_ text: String) -> String {
 
 enum EnglishText {
     static let words: [(String, String)] = [
+        ("새 계정은 터미널에서 claude 실행 후 /login으로 로그인한 다음 등록하세요.", "To add an account, run claude in a terminal, sign in with /login, then add it here."),
+        ("자동 전환 설정은 cswap 메뉴바가 다시 시작될 때 적용돼요.", "Auto-switch applies when the cswap menu bar restarts."),
+        ("cswap을 찾을 수 없습니다.", "cswap was not found."),
+        ("현재 로그인 계정 등록", "Add current login"),
+        ("여유 있는 계정으로", "Switch to most headroom"),
+        ("Claude 계정 전환", "Switch Claude account"),
+        ("이 계정의 캐릭터", "Character for this account"),
+        ("Claude 계정", "Claude accounts"),
+        ("자동 전환", "Auto-switch"),
+        ("사용 중", "Active"),
         ("Windows 터미널에서 codex login 후 새로고침하세요. Credential Manager 저장은 현재 지원하지 않습니다.", "Run codex login in a Windows terminal, then refresh. Credential Manager storage is not supported."),
         ("Claude 인증이 만료되었거나 사용량 권한이 없습니다. Claude Code에서 /login 후 다시 시도하세요.", "Claude authentication expired or lacks usage access. Use /login in Claude Code and retry."),
         ("펫 설정을 저장할 수 없습니다. %LOCALAPPDATA%\\ChiikawaPet 폴더의 쓰기 권한을 확인하세요.", "Cannot save settings. Check write access to %LOCALAPPDATA%\\ChiikawaPet."),
@@ -89,6 +99,9 @@ enum EnglishText {
         ("주간", "Weekly"),
     ]
     static let patterns: [(NSRegularExpression, String)] = [
+        (try! NSRegularExpression(pattern: "^5시간 (.+) · 주간 (.+) 남음$"), "5h $1 · weekly $2 left"),
+        (try! NSRegularExpression(pattern: "^(.+) 계정으로 전환했어요.$"), "Switched to $1."),
+        (try! NSRegularExpression(pattern: "^cswap 실행 실패: (.+)$"), "cswap failed: $1"),
         (try! NSRegularExpression(pattern: "^(.+)의 에너지 · (.+)$"), "$1’s energy · $2"),
         (try! NSRegularExpression(pattern: "^(.+)의 에너지$"), "$1’s energy"),
         (try! NSRegularExpression(pattern: "^(.+) 펫$"), "$1 pet"),
